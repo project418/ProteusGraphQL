@@ -1,16 +1,16 @@
 # --- Dependencies ---
-node_modules/   # Installed packages (Should not be in repo)
-npm-debug.log    # Debug logs
+node_modules
+npm-debug.log
 
 # --- Build Outputs ---
-dist/            # Compiled JavaScript files
-build/           # Alternative build directory
+dist 
+build
 
 # --- IDE & Editor Settings ---
-.vscode/         # VS Code local settings
-.idea/           # WebStorm/IntelliJ settings
-*.swp            # Vim swap files
-.DS_Store        # macOS folder metadata
+.vscode
+.idea
+*.swp
+.DS_Store
 
 # --- Testing & Reports ---
-coverage/        # Test coverage reports
+coverage
