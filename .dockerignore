@@ -1,0 +1,26 @@
+# --- Git Data ---
+.git             # Version history (Unnecessary bloat for image)
+.gitignore
+
+# --- Local Dependencies ---
+node_modules     # Modules should be installed cleanly inside Docker
+
+# --- Local Build Outputs ---
+dist
+build
+
+# --- Docker Configuration ---
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# --- Editor & Logs ---
+.vscode
+.idea
+*.log
+.DS_Store
+npm-debug.log
+
+# --- Documentation ---
+README.md        # Not needed in production image
+docs/

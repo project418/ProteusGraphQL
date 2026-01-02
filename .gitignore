@@ -1,0 +1,16 @@
+# --- Dependencies ---
+node_modules/   # Installed packages (Should not be in repo)
+npm-debug.log    # Debug logs
+
+# --- Build Outputs ---
+dist/            # Compiled JavaScript files
+build/           # Alternative build directory
+
+# --- IDE & Editor Settings ---
+.vscode/         # VS Code local settings
+.idea/           # WebStorm/IntelliJ settings
+*.swp            # Vim swap files
+.DS_Store        # macOS folder metadata
+
+# --- Testing & Reports ---
+coverage/        # Test coverage reports
