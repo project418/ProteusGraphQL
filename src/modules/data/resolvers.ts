@@ -1,5 +1,5 @@
 import { dataClient } from '../../clients/proteus.client';
-import { structToJson } from '../../utils/struct-helper'; // Helper'ı import ediyoruz
+import { structToJson } from '../../utils/struct-helper';
 
 const grpcCall = (method: Function, request: any) => {
   return new Promise((resolve, reject) => {

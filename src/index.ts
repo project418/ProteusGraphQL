@@ -27,7 +27,7 @@ const startServer = async () => {
   const { url } = await startStandaloneServer(server, {
     listen: { port: 4000 },
   });
-  console.log(`🚀 Gateway Sunucusu Hazır: ${url}`);
+  console.log(`🚀 Gateway Ready: ${url}`);
 };
 
 startServer();

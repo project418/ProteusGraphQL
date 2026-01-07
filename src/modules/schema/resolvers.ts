@@ -2,7 +2,6 @@ import { GraphQLJSON } from 'graphql-type-json';
 import { schemaClient } from '../../clients/proteus.client';
 import { structToJson } from '../../utils/struct-helper';
 
-// Helper: gRPC Call Wrapper
 const grpcCall = (method: Function, request: any) => {
   return new Promise((resolve, reject) => {
     method.call(schemaClient, request, (err: any, response: any) => {
