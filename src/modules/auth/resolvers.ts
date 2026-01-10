@@ -55,9 +55,8 @@ const resolvers = {
       await Session.createNewSession(
         context.req,
         context.res,
-        "public", 
-        recipeUserId,
-        activeTenantId ? { tenant_id: activeTenantId } : {}
+        activeTenantId || "public", 
+        recipeUserId
       );
 
       const tokens = getTokensFromHeaders(context.res);
@@ -134,9 +133,8 @@ const resolvers = {
         await Session.createNewSession(
             context.req,
             context.res,
-            "public",
-            recipeUserId,
-            { tenant_id: newTenantId }
+            newTenantId,
+            recipeUserId
         );
 
         return newTenant;
@@ -172,9 +170,8 @@ const resolvers = {
         await Session.createNewSession(
             context.req,
             context.res,
-            "public",
-            recipeUserId,
-            { tenant_id: targetTenantId }
+            targetTenantId,
+            recipeUserId
         );
 
         const targetTenantDetails = await grpcCall(tenantClient, 'GetTenant', { id: targetTenantId }, { ...context, tenantId: targetTenantId });

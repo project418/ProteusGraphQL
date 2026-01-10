@@ -70,7 +70,7 @@ const startServer = async () => {
 
         if (session) {
             const payload = session.getAccessTokenPayload();
-            tenantId = payload["tenant_id"] || "";
+            tenantId = payload["tId"] || "";
         }
 
         return {
