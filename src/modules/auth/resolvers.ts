@@ -3,21 +3,13 @@ import EmailPassword from "supertokens-node/recipe/emailpassword";
 import Session from "supertokens-node/recipe/session";
 import Multitenancy from "supertokens-node/recipe/multitenancy";
 import { tenantClient } from "../../clients/proteus.client";
-import { MyContext, grpcCall } from "../../utils/grpc-helper"; // grpcCall eklendi
+import { MyContext, grpcCall } from "../../utils/grpc-helper";
 
-const createTenantViaGrpc = (name: string) => {
-    return new Promise<any>((resolve, reject) => {
-        tenantClient.CreateTenant({ name }, (err: any, response: any) => {
-            if (err) reject(err);
-            else resolve(response);
-        });
-    });
-};
-
+// Yardımcı fonksiyon: Header'dan tokenları al
 const getTokensFromHeaders = (res: any) => {
-    const accessToken = res.getHeader("st-access-token") as string;
-    const refreshToken = res.getHeader("st-refresh-token") as string;
-    return { accessToken, refreshToken };
+  const accessToken = res.getHeader("st-access-token") as string;
+  const refreshToken = res.getHeader("st-refresh-token") as string;
+  return { accessToken, refreshToken };
 };
 
 const resolvers = {
@@ -25,8 +17,7 @@ const resolvers = {
     login: async (_: any, args: any, context: MyContext) => {
       const { email, password } = args;
 
-      // 1. Giriş Yap (Public context)
-      const response = await EmailPassword.signIn(context.tenantId || "public", email, password);
+      const response = await EmailPassword.signIn("public", email, password);
 
       if (response.status === "WRONG_CREDENTIALS_ERROR") {
         throw new Error("E-posta veya şifre hatalı.");
@@ -34,35 +25,39 @@ const resolvers = {
 
       const user = response.user;
       const recipeUserId = new SuperTokens.RecipeUserId(user.id);
-      
-      // 2. Kullanıcının Tenantlarını Bul
-      const userTenants = await Multitenancy.listAllTenants(user);
-      
-      let selectedTenantId: string | undefined;
-      let selectedTenantDetails: any = null;
+      const rawTenantIds = user.tenantIds || [];
+      const tenantIds = rawTenantIds.filter((id) => id !== "public");
 
-      // 3. Eğer tenantı varsa ilkini seç (Auto-Select)
-      if (userTenants.tenants.length > 0) {
-        selectedTenantId = userTenants.tenants[0].tenantId;
+      let activeTenantId: string | undefined;
+      let activeTenantDetails: any = null;
+      let availableTenantsDetails: any[] = [];
 
-        // Tenant detaylarını gRPC'den çek (AuthResponse içinde dönmek için)x
+      if (tenantIds.length > 0) {
+        activeTenantId = tenantIds[0];
+
         try {
-            // Geçici context oluşturup tenantId'yi veriyoruz ki gRPC metadata doğru gitsin
-            const tempCtx = { ...context, tenantId: selectedTenantId };
-            selectedTenantDetails = await grpcCall(tenantClient, 'GetTenant', { id: selectedTenantId }, tempCtx);
+          const tempCtx = { ...context, tenantId: activeTenantId };
+          activeTenantDetails = await grpcCall(tenantClient, 'GetTenant', { id: activeTenantId }, tempCtx);
         } catch (e) {
-            console.warn("Tenant detayları çekilemedi:", e);
+          console.warn(`Tenant (${activeTenantId}) detayları çekilemedi:`, e);
+        }
+
+        for (const tId of tenantIds) {
+            try {
+                const tDetails = await grpcCall(tenantClient, 'GetTenant', { id: tId }, { ...context, tenantId: tId });
+                availableTenantsDetails.push(tDetails);
+            } catch (error) {
+                console.warn(`Tenant listesi oluşturulurken hata: ${tId}`);
+            }
         }
       }
 
-      // 4. Session Oluştur (Seçilen Tenant ID ile)
-      // Eğer selectedTenantId varsa payload'a eklenir, yoksa (henüz tenantı yoksa) boş geçer.
       await Session.createNewSession(
-          context.req, 
-          context.res, 
-          "public", 
-          recipeUserId,
-          selectedTenantId ? { tenant_id: selectedTenantId } : {} // AccessTokenPayload
+        context.req,
+        context.res,
+        "public", 
+        recipeUserId,
+        activeTenantId ? { tenant_id: activeTenantId } : {}
       );
 
       const tokens = getTokensFromHeaders(context.res);
@@ -73,14 +68,15 @@ const resolvers = {
           email: user.emails[0],
           timeJoined: user.timeJoined
         },
-        tenant: selectedTenantDetails, // Artık null dönmüyor (varsa)
+        tenant: activeTenantDetails,
+        availableTenants: availableTenantsDetails,
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken
       };
     },
 
     register: async (_: any, args: any, context: MyContext) => {
-      const { email, password, tenantName } = args;
+      const { email, password } = args;
 
       const response = await EmailPassword.signUp("public", email, password);
 
@@ -89,64 +85,133 @@ const resolvers = {
       }
 
       const user = response.user;
+      const recipeUserId = new SuperTokens.RecipeUserId(user.id);
+
+      await Session.createNewSession(
+        context.req,
+        context.res,
+        "public",
+        recipeUserId,
+        {} 
+      );
+
+      const tokens = getTokensFromHeaders(context.res);
+
+      return {
+        user: {
+          id: user.id,
+          email: user.emails[0],
+          timeJoined: user.timeJoined
+        },
+        tenant: null, 
+        availableTenants: [],
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
+      };
+    },
+
+    createOwnTenant: async (_: any, args: { name: string }, context: MyContext) => {
+      if (!context.session) {
+        throw new Error("Bu işlem için giriş yapmalısınız.");
+      }
+
+      const userId = context.session.getUserId();
+      const recipeUserId = new SuperTokens.RecipeUserId(userId);
 
       try {
-        const newTenant = await createTenantViaGrpc(tenantName);
+        const newTenant: any = await new Promise((resolve, reject) => {
+            tenantClient.CreateTenant({ name: args.name }, (err: any, response: any) => {
+                if (err) reject(err);
+                else resolve(response);
+            });
+        });
+
         const newTenantId = newTenant.id;
 
-        // Tenant ayarlarını yap (Login methodları)
-        await Multitenancy.createOrUpdateTenant(newTenantId, { firstFactors: null });
-
-        // Kullanıcıyı tenant'a ekle
-        const recipeUserId = new SuperTokens.RecipeUserId(user.id);
+        await Multitenancy.createOrUpdateTenant(newTenantId);
         await Multitenancy.associateUserToTenant(newTenantId, recipeUserId);
 
-        // Session oluştur (Tenant ID ile)
         await Session.createNewSession(
-            context.req, 
-            context.res, 
-            "public", 
+            context.req,
+            context.res,
+            "public",
             recipeUserId,
             { tenant_id: newTenantId }
         );
 
+        return newTenant;
+
+      } catch (error) {
+        console.error("Create Own Tenant Error:", error);
+        throw new Error("Tenant oluşturulamadı.");
+      }
+    },
+
+    switchTenant: async (_: any, args: { tenantId: string }, context: MyContext) => {
+        if (!context.session) {
+            throw new Error("Oturum bulunamadı.");
+        }
+
+        const targetTenantId = args.tenantId;
+        const userId = context.session.getUserId();
+        
+        const user = await SuperTokens.getUser(userId);
+        if (!user) {
+            throw new Error("Kullanıcı bulunamadı.");
+        }
+        
+        const rawTenantIds = user.tenantIds || [];
+        const tenantIds = rawTenantIds.filter((id) => id !== "public");
+        const hasAccess = tenantIds.includes(targetTenantId);
+
+        if (!hasAccess) {
+            throw new Error("Bu tenant'a erişim yetkiniz yok.");
+        }
+
+        const recipeUserId = new SuperTokens.RecipeUserId(userId);
+        await Session.createNewSession(
+            context.req,
+            context.res,
+            "public",
+            recipeUserId,
+            { tenant_id: targetTenantId }
+        );
+
+        const targetTenantDetails = await grpcCall(tenantClient, 'GetTenant', { id: targetTenantId }, { ...context, tenantId: targetTenantId });
+        
+        let availableTenantsDetails: any[] = [];
+        for (const tId of tenantIds) {
+            try {
+                const tDetails = await grpcCall(tenantClient, 'GetTenant', { id: tId }, { ...context, tenantId: tId });
+                availableTenantsDetails.push(tDetails);
+            } catch (e) {}
+        }
+
         const tokens = getTokensFromHeaders(context.res);
 
         return {
-          user: {
-            id: user.id,
-            email: user.emails[0],
-            timeJoined: user.timeJoined
-          },
-          tenant: newTenant,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken
+            user: { id: userId, email: user.emails[0], timeJoined: user.timeJoined },
+            tenant: targetTenantDetails,
+            availableTenants: availableTenantsDetails,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken
         };
-
-      } catch (error) {
-        console.error("Register flow error:", error);
-        throw new Error("Kayıt işlemi sırasında bir hata oluştu.");
-      }
     },
 
     refreshToken: async (_: any, args: any, context: MyContext) => {
         const { refreshToken } = args;
-
         try {
             context.req.headers["st-refresh-token"] = refreshToken;
             await Session.refreshSession(context.req, context.res);
             
             const tokens = getTokensFromHeaders(context.res);
-
             if (!tokens.accessToken || !tokens.refreshToken) {
                 throw new Error("Token yenileme başarısız oldu.");
             }
-
             return {
                 accessToken: tokens.accessToken,
                 refreshToken: tokens.refreshToken
             };
-
         } catch (err: any) {
             console.error("Refresh error:", err);
             throw new Error("Oturum yenilenemedi.");

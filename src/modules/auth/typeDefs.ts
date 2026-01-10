@@ -5,8 +5,17 @@ const typeDefs = `#graphql
     timeJoined: Float
   }
 
+  type Tenant {
+    id: ID!
+    name: String!
+    created_at: String
+    updated_at: String
+  }
+
   type AuthResponse {
     user: User
+    tenant: Tenant
+    availableTenants: [Tenant]
     accessToken: String!
     refreshToken: String!
   }
@@ -18,8 +27,11 @@ const typeDefs = `#graphql
 
   extend type Mutation {
     login(email: String!, password: String!): AuthResponse
-    register(email: String!, password: String!, tenantName: String!): AuthResponse
+    register(email: String!, password: String!): AuthResponse
     refreshToken(refreshToken: String!): RefreshResponse
+    
+    createOwnTenant(name: String!): Tenant
+    switchTenant(tenantId: String!): AuthResponse
   }
 `;
 
