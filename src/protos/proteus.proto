@@ -224,3 +224,48 @@ service EventService {
 	// Acknowledges the processing of an event.
   	rpc AcknowledgeEvent (AckRequest) returns (AckResponse);
 }
+
+// --- Tenant DTOs ---
+message Tenant {
+    string id = 1;
+    string name = 2;
+    string connection_string = 3;
+    string created_at = 4;
+    string updated_at = 5;
+    string read_connection_string = 6;
+}
+
+message CreateTenantRequest {
+    string name = 1;
+    string connection_string = 2;
+    string read_connection_string = 3;
+}
+
+message UpdateTenantRequest {
+    string id = 1;
+    string name = 2;
+    string connection_string = 3;
+    string read_connection_string = 4;
+}
+
+message TenantIdRequest {
+    string id = 1;
+}
+
+message TenantsResponse {
+    repeated Tenant tenants = 1;
+}
+
+// --- Tenant Service ---
+service TenantService {
+	// Creates a new tenant.
+    rpc CreateTenant(CreateTenantRequest) returns (Tenant);
+	// Updates an existing tenant.
+    rpc UpdateTenant(UpdateTenantRequest) returns (Tenant);
+	// Deletes a tenant by ID.
+    rpc DeleteTenant(TenantIdRequest) returns (DeleteResponse);
+	// Gets a tenant by ID.
+    rpc GetTenant(TenantIdRequest) returns (Tenant);
+	// Lists all tenants.
+    rpc ListTenants(Empty) returns (TenantsResponse);
+}
