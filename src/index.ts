@@ -22,6 +22,7 @@ import authTypeDefs from './modules/auth/typeDefs';
 import authResolvers from './modules/auth/resolvers';
 
 import { MyContext } from './utils/grpc-helper';
+import { formatError } from './utils/error-handler';
 
 initSuperTokens();
 
@@ -45,6 +46,7 @@ const startServer = async () => {
     typeDefs,
     resolvers,
     plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+    formatError,
   });
 
   await server.start();
