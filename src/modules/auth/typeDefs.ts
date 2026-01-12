@@ -24,7 +24,8 @@ const typeDefs = `#graphql
     availableTenants: [Tenant]
     accessToken: String!
     refreshToken: String!
-    permissions: JSON 
+    permissions: JSON
+    requiresPasswordChange: Boolean
   }
 
   type RefreshResponse {
@@ -87,11 +88,13 @@ const typeDefs = `#graphql
     # -- Tenant Management
     createOwnTenant(name: String!): Tenant
     
+    
     # -- Self Service
     updateMe(input: UpdateUserInput!): User
 
     # -- User Management
     inviteUser(email: String!, roleName: String!): Boolean
+    acceptInvite(token: String!): Boolean
     assignRole(userId: String!, roleName: String!): Boolean
     removeUserFromTenant(userId: String!): Boolean
     updateUser(userId: String!, input: UpdateUserInput!): User

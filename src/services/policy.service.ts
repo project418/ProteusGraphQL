@@ -1,6 +1,6 @@
 import UserMetadata from "supertokens-node/recipe/usermetadata";
 import NodeCache from "node-cache";
-import { RolePolicy, UserMetadataStructure } from "../types/rbac";
+import { RolePolicy, UserMetadataStructure, InviteInfo } from "../types/rbac";
 
 const policyCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
 
@@ -156,5 +156,51 @@ export class PolicyService {
             await UserMetadata.updateUserMetadata(listKey, { roles: newRoles });
             policyCache.del(listKey);
         }
+    }
+
+    // =========================================================================
+    // Invite Management
+    // =========================================================================
+
+    /**
+     * Adds a pending invite to the user's metadata.
+     */
+    static async addPendingInvite(userId: string, token: string, invite: InviteInfo): Promise<void> {
+        const { metadata } = await UserMetadata.getUserMetadata(userId);
+        const userMeta = metadata as UserMetadataStructure;
+
+        const currentInvites = userMeta.pending_invites || {};
+
+        const updatedInvites = {
+            ...currentInvites,
+            [token]: invite
+        };
+
+        await UserMetadata.updateUserMetadata(userId, {
+            pending_invites: updatedInvites as any
+        });
+    }
+
+    /**
+     * Consumes (removes) a pending invite from the user's metadata and returns its data.
+     */
+    static async consumePendingInvite(userId: string, token: string): Promise<InviteInfo | null> {
+        const { metadata } = await UserMetadata.getUserMetadata(userId);
+        const userMeta = metadata as UserMetadataStructure;
+
+        if (!userMeta.pending_invites || !userMeta.pending_invites[token]) {
+            return null;
+        }
+
+        const inviteData = userMeta.pending_invites[token];
+
+        const updatedInvites = { ...userMeta.pending_invites };
+        delete updatedInvites[token];
+
+        await UserMetadata.updateUserMetadata(userId, {
+            pending_invites: updatedInvites as any
+        });
+
+        return inviteData;
     }
 }

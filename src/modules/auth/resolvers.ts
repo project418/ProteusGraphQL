@@ -2,12 +2,14 @@ import SuperTokens from "supertokens-node"
 import EmailPassword from "supertokens-node/recipe/emailpassword"
 import Session from "supertokens-node/recipe/session"
 import Multitenancy from "supertokens-node/recipe/multitenancy"
+import UserMetadata from "supertokens-node/recipe/usermetadata"
 import { GraphQLError } from "graphql"
+import crypto from 'crypto'
 import { tenantClient } from "../../clients/proteus.client"
 import { MyContext, grpcCall } from "../../utils/grpc-helper"
 import { protect } from "../../utils/auth-middleware"
 import { PolicyService } from "../../services/policy.service"
-import { RolePolicy } from "../../types/rbac"
+import { RolePolicy, UserMetadataStructure } from "../../types/rbac"
 import { checkEntityAccess } from "../../utils/rbac-helper"
 
 // --- Helpers ---
@@ -147,13 +149,18 @@ const resolvers = {
       await Session.createNewSession(context.req, context.res, "public", recipeUserId)
       const tokens = getTokensFromHeaders(context.res)
 
+      const { metadata } = await UserMetadata.getUserMetadata(user.id)
+      const userMeta = metadata as UserMetadataStructure
+      const requiresPasswordChange = userMeta.requires_password_change || false
+
       return {
         user: { id: user.id, email: user.emails[0], timeJoined: user.timeJoined },
         tenant: activeTenantDetails,
         availableTenants: availableTenantsDetails,
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
-        permissions: initialPermissions
+        permissions: initialPermissions,
+        requiresPasswordChange
       }
     },
 
@@ -177,7 +184,8 @@ const resolvers = {
         availableTenants: [],
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
-        permissions: null
+        permissions: null,
+        requiresPasswordChange: false
       }
     },
 
@@ -289,6 +297,12 @@ const resolvers = {
         throw new GraphQLError("Email already exists.", { extensions: { code: "EMAIL_ALREADY_EXISTS" } })
       }
 
+      if (args.input.password) {
+        await UserMetadata.updateUserMetadata(userId, {
+          requires_password_change: false
+        })
+      }
+
       const user = await SuperTokens.getUser(userId)
       if (!user) throw new GraphQLError("User not found.", { extensions: { code: "INTERNAL_SERVER_ERROR" } })
 
@@ -306,27 +320,80 @@ const resolvers = {
       checkEntityAccess(ctx, "system_iam", "create")
 
       try {
+        const senderId = ctx.session!.getUserId()
+
         const usersResponse = await SuperTokens.listUsersByAccountInfo("public", {
           email: args.email
         })
 
-        if (usersResponse.length === 0) {
-          throw new GraphQLError("User not found. The user must be registered to the system first.", {
-            extensions: { code: "USER_NOT_FOUND" }
+        if (usersResponse.length > 0) {
+          const targetUser = usersResponse[0]
+
+          const inviteToken = crypto.randomBytes(32).toString('hex')
+          await PolicyService.addPendingInvite(targetUser.id, inviteToken, {
+            tenantId: ctx.tenantId,
+            roleName: args.roleName,
+            invitedBy: senderId,
+            createdAt: Date.now()
           })
+
+          const inviteLink = `http://localhost:3000/auth/join-tenant?token=${inviteToken}`
+
+          console.log("\n========================================")
+          console.log("📨 VAROLAN KULLANICIYA DAVET LİNKİ (Metadata):", inviteLink)
+          console.log("========================================\n")
+
+          return true
+
+        } else {
+          const tempPassword = crypto.randomBytes(8).toString('hex') + "A1!"
+
+          const signUpResponse = await EmailPassword.signUp("public", args.email, tempPassword)
+
+          if (signUpResponse.status === "EMAIL_ALREADY_EXISTS_ERROR") {
+            throw new GraphQLError("User exists conflict.")
+          }
+
+          const newUser = signUpResponse.user
+          const recipeUserId = new SuperTokens.RecipeUserId(newUser.id)
+
+          await Multitenancy.associateUserToTenant(ctx.tenantId, recipeUserId)
+          await PolicyService.assignRoleToUser(newUser.id, ctx.tenantId, args.roleName)
+          await UserMetadata.updateUserMetadata(newUser.id, { requires_password_change: true })
+
+          console.log("\n========================================")
+          console.log("wk YENİ KULLANICI OLUŞTURULDU")
+          console.log(`Email: ${args.email}`)
+          console.log(`Geçici Şifre: ${tempPassword}`)
+          console.log(`Login Linki: http://localhost:3000/auth/login`)
+          console.log("========================================\n")
+
+          return true
         }
-
-        const user = usersResponse[0]
-        const recipeUserId = new SuperTokens.RecipeUserId(user.id)
-
-        await Multitenancy.associateUserToTenant(ctx.tenantId, recipeUserId)
-        await PolicyService.assignRoleToUser(user.id, ctx.tenantId, args.roleName)
-
-        return true
       } catch (e: any) {
         console.error("Invite Error:", e)
         if (e instanceof GraphQLError) throw e
         return false
+      }
+    }),
+
+    acceptInvite: protect(async (_parent: any, args: { token: string }, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId()
+      const inviteData = await PolicyService.consumePendingInvite(userId, args.token)
+
+      if (!inviteData) {
+        throw new GraphQLError("Invalid or expired invite token.", { extensions: { code: "BAD_REQUEST" } })
+      }
+
+      try {
+        const recipeUserId = new SuperTokens.RecipeUserId(userId)
+        await Multitenancy.associateUserToTenant(inviteData.tenantId, recipeUserId)
+        await PolicyService.assignRoleToUser(userId, inviteData.tenantId, inviteData.roleName)
+
+        return true
+      } catch (e) {
+        console.error("Accept Invite Failed:", e)
+        throw new GraphQLError("Failed to join tenant.", { extensions: { code: "INTERNAL_SERVER_ERROR" } })
       }
     }),
 
