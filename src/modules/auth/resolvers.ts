@@ -193,6 +193,52 @@ const resolvers = {
       }
     },
 
+    sendPasswordResetEmail: async (_parent: any, args: { email: string }, ctx: MyContext) => {
+      const usersResponse = await SuperTokens.listUsersByAccountInfo("public", { email: args.email })
+
+      if (usersResponse.length === 0) {
+        return true
+      }
+
+      const user = usersResponse[0]
+
+      try {
+        const response = await EmailPassword.createResetPasswordToken("public", user.id, args.email)
+
+        if (response.status === "OK") {
+          const resetLink = `http://localhost:3000/auth/reset-password?token=${response.token}`
+
+          // TODO: Burada sendEmail(args.email, resetLink) gibi bir servis çağrılmalı.
+          console.log("\n========================================")
+          console.log("📧 PASSWORD RESET LINK:", resetLink)
+          console.log("========================================\n")
+        }
+
+        return true
+      } catch (error) {
+        console.error("Reset Email Error:", error)
+        return false
+      }
+    },
+
+    resetPassword: async (_parent: any, args: { token: string, password: string }, ctx: MyContext) => {
+      try {
+        const response = await EmailPassword.resetPasswordUsingToken("public", args.token, args.password)
+
+        if (response.status === "OK") {
+          return true
+        } else {
+          throw new GraphQLError("Invalid or expired password reset token.", {
+            extensions: { code: "BAD_REQUEST" }
+          })
+        }
+      } catch (error) {
+        console.error("Reset Password Error:", error)
+        if (error instanceof GraphQLError) throw error
+        throw new GraphQLError("Failed to reset password.", { extensions: { code: "INTERNAL_SERVER_ERROR" } })
+      }
+    },
+
     // Tenant Creation
     createOwnTenant: protect(
       async (_parent: any, args: { name: string }, context: MyContext) => {

@@ -79,6 +79,10 @@ const typeDefs = `#graphql
     login(email: String!, password: String!): AuthResponse
     register(email: String!, password: String!): AuthResponse
     refreshToken(refreshToken: String!): RefreshResponse
+
+    # -- Password Reset
+    sendPasswordResetEmail(email: String!): Boolean
+    resetPassword(token: String!, password: String!): Boolean
     
     # -- Tenant Management
     createOwnTenant(name: String!): Tenant
