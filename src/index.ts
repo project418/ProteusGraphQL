@@ -23,10 +23,22 @@ import authResolvers from './modules/auth/resolvers';
 
 import { MyContext } from './utils/grpc-helper';
 import { formatError } from './utils/error-handler';
+import { PolicyService } from './services/policy.service';
 
 initSuperTokens();
 
+const rootTypeDefs = `#graphql
+  type Query {
+    _empty: String
+  }
+  
+  type Mutation {
+    _empty: String
+  }
+`;
+
 const typeDefs = mergeTypeDefs([
+  rootTypeDefs,
   schemaTypeDefs, 
   dataTypeDefs, 
   authTypeDefs
@@ -54,12 +66,13 @@ const startServer = async () => {
   app.use(
     cors({
       origin: "http://localhost:3000",
-      allowedHeaders: ["content-type", ...SuperTokens.getAllCORSHeaders()],
+      allowedHeaders: ["content-type", ...SuperTokens.getAllCORSHeaders(), "x-tenant-id"],
       credentials: true,
     })
   );
 
   app.use(middleware());
+  
   app.use(
     '/graphql',
     bodyParser.json(),
@@ -68,16 +81,32 @@ const startServer = async () => {
     expressMiddleware(server, {
       context: async ({ req, res }: { req: Request, res: Response }) => {
         const session = (req as SessionRequest).session;
-        let tenantId = "";
+        
+        const headerTenantId = req.headers['x-tenant-id'] as string;
+        const tenantId = headerTenantId || ""; 
+        
+        let currentUserRole: string | undefined = undefined;
+        let currentPermissions: any = undefined;
 
-        if (session) {
-            const payload = session.getAccessTokenPayload();
-            tenantId = payload["tId"] || "";
+        if (session && tenantId) {
+            const userId = session.getUserId();
+            
+            const roleName = await PolicyService.getUserRoleInTenant(userId, tenantId);
+            if (roleName) {
+                currentUserRole = roleName;
+                
+                const policy = await PolicyService.getRolePolicy(tenantId, roleName);
+                if (policy) {
+                    currentPermissions = policy.permissions;
+                }
+            }
         }
 
         return {
           session,
           tenantId,
+          currentUserRole,
+          currentPermissions,
           req,
           res
         };

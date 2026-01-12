@@ -2,6 +2,7 @@ import SuperTokens from "supertokens-node"
 import Session from "supertokens-node/recipe/session"
 import EmailPassword from "supertokens-node/recipe/emailpassword"
 import Dashboard from "supertokens-node/recipe/dashboard"
+import UserMetadata from "supertokens-node/recipe/usermetadata";
 
 export const initSuperTokens = () => {
   SuperTokens.init({
@@ -21,7 +22,8 @@ export const initSuperTokens = () => {
       Session.init({
         getTokenTransferMethod: () => "header"
       }),
-      Dashboard.init()
+      Dashboard.init(),
+      UserMetadata.init()
     ],
   })
 }

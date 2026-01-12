@@ -1,10 +1,13 @@
 import * as grpc from '@grpc/grpc-js';
 import { SessionContainer } from "supertokens-node/recipe/session";
 import { Request, Response } from 'express';
+import { RolePolicy } from '../types/rbac';
 
 export interface MyContext {
   session?: SessionContainer;
   tenantId?: string;
+  currentUserRole?: string;
+  currentPermissions?: RolePolicy['permissions'];
   req: Request;
   res: Response;
 }
@@ -28,12 +31,12 @@ export const grpcCall = <T>(
 
     const method = client[methodName];
     if (!method) {
-        return reject(new Error(`Method ${methodName} gRPC istemcisinde bulunamadı.`));
+        return reject(new Error(`Method ${methodName} gRPC client does not exist.`));
     }
 
     method.bind(client)(request, metadata, (err: any, response: T) => {
       if (err) {
-        console.error(`gRPC Hatası [${methodName}]:`, err);
+        console.error(`gRPC Error [${methodName}]:`, err);
         reject(err);
       } else {
         resolve(response);

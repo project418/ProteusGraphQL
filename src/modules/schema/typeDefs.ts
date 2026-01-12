@@ -1,4 +1,7 @@
 const typeDefs = `#graphql
+  # ---------------------------------------------------------
+  # --- Scalars & Enums
+  # ---------------------------------------------------------
   scalar JSON
 
   enum DataType {
@@ -9,6 +12,9 @@ const typeDefs = `#graphql
     DATA_TYPE_RELATION
   }
 
+  # ---------------------------------------------------------
+  # --- Core Entities
+  # ---------------------------------------------------------
   type Field {
     id: ID!
     display_name: String
@@ -29,7 +35,9 @@ const typeDefs = `#graphql
     fields: [Field]
   }
 
-  # --- Responses ---
+  # ---------------------------------------------------------
+  # --- Responses
+  # ---------------------------------------------------------
   type DeleteResponse {
     success: Boolean!
     message: String
@@ -39,19 +47,22 @@ const typeDefs = `#graphql
     entities: [Entity]
   }
 
-  # --- Queries ---
-  type Query {
+  # ---------------------------------------------------------
+  # --- Nested Schema Types (Namespace)
+  # ---------------------------------------------------------
+  type SchemaQueries {
     entities: EntitiesResponse
     entity(id: ID!): Entity
     field(id: ID!): Field
   }
 
-  # --- Mutations ---
-  type Mutation {
+  type SchemaMutations {
+    # -- Entity Operations
     createEntity(display_name: String!, system_name: String): Entity
     updateEntity(id: ID!, display_name: String!): Entity
     deleteEntity(id: ID!): DeleteResponse
 
+    # -- Field Operations
     createField(
       entity_id: ID!
       display_name: String!
@@ -70,6 +81,17 @@ const typeDefs = `#graphql
     ): Field
     
     deleteField(id: ID!): DeleteResponse
+  }
+
+  # ---------------------------------------------------------
+  # --- Root Extensions
+  # ---------------------------------------------------------
+  extend type Query {
+    schema: SchemaQueries
+  }
+
+  extend type Mutation {
+    schema: SchemaMutations
   }
 `;
 

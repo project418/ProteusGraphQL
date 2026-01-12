@@ -1,5 +1,7 @@
 const typeDefs = `#graphql
-  # --- Output Types ---
+  # ---------------------------------------------------------
+  # --- Output Types
+  # ---------------------------------------------------------
   type Record {
     id: ID!
     data: JSON
@@ -17,7 +19,9 @@ const typeDefs = `#graphql
     message: String
   }
 
-  # --- Input Types ---
+  # ---------------------------------------------------------
+  # --- Input Types
+  # ---------------------------------------------------------
   input FilterInput {
     field: String!
     operator: String!
@@ -34,9 +38,12 @@ const typeDefs = `#graphql
     limit: Int
   }
 
-  # --- Extensions ---
-  extend type Query {
+  # ---------------------------------------------------------
+  # --- Nested Data Types (Namespace)
+  # ---------------------------------------------------------
+  type DataQueries {
     getRecord(entity_id: String!, record_id: String!): Record
+    
     queryRecords(
       entity_id: String!
       filters: [FilterInput]
@@ -45,14 +52,27 @@ const typeDefs = `#graphql
     ): QueryResponse
   }
 
-  extend type Mutation {
+  type DataMutations {
     createRecord(entity_id: String!, data: JSON!): Record
+    
     updateRecord(
       entity_id: String!
       record_id: String!
       data: JSON!
     ): Record
+    
     deleteRecord(entity_id: String!, record_id: String!): DeleteResponse
+  }
+
+  # ---------------------------------------------------------
+  # --- Root Extensions
+  # ---------------------------------------------------------
+  extend type Query {
+    data: DataQueries
+  }
+
+  extend type Mutation {
+    data: DataMutations
   }
 `;
 
