@@ -14,12 +14,7 @@ export interface MyContext {
   res: Response;
 }
 
-export const grpcCall = <T>(
-  client: any,
-  methodName: string,
-  request: any,
-  context: MyContext,
-): Promise<T> => {
+export const grpcCall = <T>(client: any, methodName: string, request: any, context: MyContext): Promise<T> => {
   return new Promise((resolve, reject) => {
     const metadata = new grpc.Metadata();
 

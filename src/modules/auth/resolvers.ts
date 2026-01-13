@@ -24,16 +24,13 @@ const resolvers = {
     },
 
     // User Management
-    tenantUsers: protect(
-      async (_parent: any, args: { limit?: number; paginationToken?: string }, ctx: MyContext) => {
-        if (!ctx.tenantId)
-          throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
+    tenantUsers: protect(async (_parent: any, args: { limit?: number; paginationToken?: string }, ctx: MyContext) => {
+      if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
 
-        checkEntityAccess(ctx, 'system_iam', 'read');
+      checkEntityAccess(ctx, 'system_iam', 'read');
 
-        return await ctx.authService.getTenantUsers(ctx.tenantId, args.limit, args.paginationToken);
-      },
-    ),
+      return await ctx.authService.getTenantUsers(ctx.tenantId, args.limit, args.paginationToken);
+    }),
 
     // Policy Management
     listPolicies: protect(async (_parent: any, _args: any, ctx: MyContext) => {
@@ -104,23 +101,17 @@ const resolvers = {
       { requireMfaVerification: false },
     ),
 
-    removeTotpDevice: protect(
-      async (_parent: any, args: { deviceName: string }, ctx: MyContext) => {
-        const userId = ctx.session!.getUserId();
-        return await ctx.authService.removeTotpDevice(userId, args.deviceName, ctx);
-      },
-    ),
+    removeTotpDevice: protect(async (_parent: any, args: { deviceName: string }, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId();
+      return await ctx.authService.removeTotpDevice(userId, args.deviceName, ctx);
+    }),
 
     // Password Reset
     sendPasswordResetEmail: async (_parent: any, args: { email: string }, ctx: MyContext) => {
       return await ctx.authService.sendPasswordResetEmail(args.email);
     },
 
-    resetPassword: async (
-      _parent: any,
-      args: { token: string; password: string },
-      ctx: MyContext,
-    ) => {
+    resetPassword: async (_parent: any, args: { token: string; password: string }, ctx: MyContext) => {
       return await ctx.authService.resetPassword(args.token, args.password);
     },
 
@@ -131,64 +122,46 @@ const resolvers = {
     }),
 
     // Self Service
-    updateMe: protect(
-      async (
-        _parent: any,
-        args: { input: { email?: string; password?: string } },
-        ctx: MyContext,
-      ) => {
-        const userId = ctx.session!.getUserId();
-        return await ctx.authService.updateUser(userId, args.input);
-      },
-    ),
+    updateMe: protect(async (_parent: any, args: { input: { email?: string; password?: string } }, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId();
+      return await ctx.authService.updateUser(userId, args.input);
+    }),
 
     // User Management
-    inviteUser: protect(
-      async (_parent: any, args: { email: string; roleName: string }, ctx: MyContext) => {
-        if (!ctx.tenantId)
-          throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
-        checkEntityAccess(ctx, 'system_iam', 'create');
+    inviteUser: protect(async (_parent: any, args: { email: string; roleName: string }, ctx: MyContext) => {
+      if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
+      checkEntityAccess(ctx, 'system_iam', 'create');
 
-        const senderId = ctx.session!.getUserId();
-        return await ctx.authService.inviteUser(args.email, args.roleName, ctx.tenantId, senderId);
-      },
-    ),
+      const senderId = ctx.session!.getUserId();
+      return await ctx.authService.inviteUser(args.email, args.roleName, ctx.tenantId, senderId);
+    }),
 
     acceptInvite: protect(async (_parent: any, args: { token: string }, ctx: MyContext) => {
       const userId = ctx.session!.getUserId();
       return await ctx.authService.acceptInvite(userId, args.token);
     }),
 
-    assignRole: protect(
-      async (_parent: any, args: { userId: string; roleName: string }, ctx: MyContext) => {
-        if (!ctx.tenantId)
-          throw new GraphQLError('Tenant ID header is required.', {
-            extensions: { code: 'BAD_REQUEST' },
-          });
-        checkEntityAccess(ctx, 'system_iam', 'update');
+    assignRole: protect(async (_parent: any, args: { userId: string; roleName: string }, ctx: MyContext) => {
+      if (!ctx.tenantId)
+        throw new GraphQLError('Tenant ID header is required.', {
+          extensions: { code: 'BAD_REQUEST' },
+        });
+      checkEntityAccess(ctx, 'system_iam', 'update');
 
-        await ctx.authService.assignRole(args.userId, ctx.tenantId, args.roleName);
-        return true;
-      },
-    ),
+      await ctx.authService.assignRole(args.userId, ctx.tenantId, args.roleName);
+      return true;
+    }),
 
-    removeUserFromTenant: protect(
-      async (_parent: any, args: { userId: string }, ctx: MyContext) => {
-        if (!ctx.tenantId)
-          throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
-        checkEntityAccess(ctx, 'system_iam', 'delete');
+    removeUserFromTenant: protect(async (_parent: any, args: { userId: string }, ctx: MyContext) => {
+      if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
+      checkEntityAccess(ctx, 'system_iam', 'delete');
 
-        await ctx.authService.removeUserFromTenant(args.userId, ctx.tenantId);
-        return true;
-      },
-    ),
+      await ctx.authService.removeUserFromTenant(args.userId, ctx.tenantId);
+      return true;
+    }),
 
     updateUser: protect(
-      async (
-        _parent: any,
-        args: { userId: string; input: { email?: string; password?: string } },
-        ctx: MyContext,
-      ) => {
+      async (_parent: any, args: { userId: string; input: { email?: string; password?: string } }, ctx: MyContext) => {
         if (!ctx.tenantId)
           throw new GraphQLError('Tenant ID header is required.', {
             extensions: { code: 'BAD_REQUEST' },
@@ -200,18 +173,16 @@ const resolvers = {
     ),
 
     // Policy Management
-    createPolicy: protect(
-      async (_parent: any, args: { roleName: string; policy: RolePolicy }, ctx: MyContext) => {
-        if (!ctx.tenantId)
-          throw new GraphQLError('Tenant ID header is required.', {
-            extensions: { code: 'BAD_REQUEST' },
-          });
-        checkEntityAccess(ctx, 'system_iam', 'create');
+    createPolicy: protect(async (_parent: any, args: { roleName: string; policy: RolePolicy }, ctx: MyContext) => {
+      if (!ctx.tenantId)
+        throw new GraphQLError('Tenant ID header is required.', {
+          extensions: { code: 'BAD_REQUEST' },
+        });
+      checkEntityAccess(ctx, 'system_iam', 'create');
 
-        await ctx.authService.setRolePolicy(ctx.tenantId, args.roleName, args.policy);
-        return true;
-      },
-    ),
+      await ctx.authService.setRolePolicy(ctx.tenantId, args.roleName, args.policy);
+      return true;
+    }),
 
     deletePolicy: protect(async (_parent: any, args: { roleName: string }, ctx: MyContext) => {
       if (!ctx.tenantId)

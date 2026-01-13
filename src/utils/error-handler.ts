@@ -1,9 +1,6 @@
 import { GraphQLFormattedError } from 'graphql';
 
-export const formatError = (
-  formattedError: GraphQLFormattedError,
-  error: unknown,
-): GraphQLFormattedError => {
+export const formatError = (formattedError: GraphQLFormattedError, error: unknown): GraphQLFormattedError => {
   console.error('🔥 GraphQL Error:', error);
 
   if (formattedError.extensions?.code) {
@@ -27,8 +24,7 @@ export const formatError = (
     message: formattedError.message || 'An unexpected error occurred.',
     extensions: {
       code: 'INTERNAL_SERVER_ERROR',
-      stacktrace:
-        process.env.NODE_ENV === 'production' ? undefined : formattedError.extensions?.stacktrace,
+      stacktrace: process.env.NODE_ENV === 'production' ? undefined : formattedError.extensions?.stacktrace,
     },
   };
 };

@@ -59,11 +59,7 @@ export interface IAuthProvider {
 
   disassociateUserFromTenant(userId: string, tenantId: string): Promise<void>;
 
-  getTenantUsers(
-    tenantId: string,
-    limit?: number,
-    paginationToken?: string,
-  ): Promise<UserPaginationResult>;
+  getTenantUsers(tenantId: string, limit?: number, paginationToken?: string): Promise<UserPaginationResult>;
 
   /**
    * Gets the user's role in the tenant.

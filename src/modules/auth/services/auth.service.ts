@@ -20,11 +20,7 @@ export class AuthService {
   /**
    * Login Operation: Logs in with Auth Provider, then collects Tenant and Authorization information.
    */
-  async login(
-    email: string,
-    password: string,
-    context: IAuthContext,
-  ): Promise<AuthServiceResponse> {
+  async login(email: string, password: string, context: IAuthContext): Promise<AuthServiceResponse> {
     // 1. Login via Provider
     const loginResult = await this.provider.login(email, password, context);
     const user = loginResult.user;
@@ -44,12 +40,7 @@ export class AuthService {
 
       try {
         const tempCtx = { ...context, tenantId: activeTenantId } as any;
-        activeTenantDetails = await grpcCall(
-          tenantClient,
-          'GetTenant',
-          { id: activeTenantId },
-          tempCtx,
-        );
+        activeTenantDetails = await grpcCall(tenantClient, 'GetTenant', { id: activeTenantId }, tempCtx);
 
         // Role check via Provider instead of PolicyService
         const role = await this.provider.getUserRoleInTenant(user.id, activeTenantId);
@@ -93,11 +84,7 @@ export class AuthService {
     };
   }
 
-  async register(
-    email: string,
-    password: string,
-    context: IAuthContext,
-  ): Promise<AuthServiceResponse> {
+  async register(email: string, password: string, context: IAuthContext): Promise<AuthServiceResponse> {
     const result = await this.provider.register(email, password, context);
 
     return {
@@ -122,11 +109,7 @@ export class AuthService {
     return await this.provider.getUser(userId);
   }
 
-  async getTenantUsers(
-    tenantId: string,
-    limit?: number,
-    paginationToken?: string,
-  ): Promise<UserPaginationResult> {
+  async getTenantUsers(tenantId: string, limit?: number, paginationToken?: string): Promise<UserPaginationResult> {
     return await this.provider.getTenantUsers(tenantId, limit, paginationToken);
   }
 
@@ -210,11 +193,7 @@ export class AuthService {
     return { verified: true };
   }
 
-  async verifyMfa(
-    userId: string,
-    totp: string,
-    context: IAuthContext,
-  ): Promise<MfaVerificationResult> {
+  async verifyMfa(userId: string, totp: string, context: IAuthContext): Promise<MfaVerificationResult> {
     const result = await this.provider.verifyMfaCode(userId, totp);
 
     if (result.verified && context.session) {
@@ -224,11 +203,7 @@ export class AuthService {
     return result;
   }
 
-  async removeTotpDevice(
-    userId: string,
-    deviceName: string,
-    context: IAuthContext,
-  ): Promise<boolean> {
+  async removeTotpDevice(userId: string, deviceName: string, context: IAuthContext): Promise<boolean> {
     await this.provider.removeTotpDevice(userId, deviceName);
 
     const devices = await this.provider.listTotpDevices(userId);
@@ -245,12 +220,7 @@ export class AuthService {
 
   // --- User Invitation and Management ---
 
-  async inviteUser(
-    email: string,
-    roleName: string,
-    tenantId: string,
-    senderId: string,
-  ): Promise<boolean> {
+  async inviteUser(email: string, roleName: string, tenantId: string, senderId: string): Promise<boolean> {
     const existingUser = await this.provider.getUserByEmail(email);
 
     if (existingUser) {
@@ -299,9 +269,7 @@ export class AuthService {
   async createOwnTenant(userId: string, tenantName: string): Promise<any> {
     // 1. Create Tenant via gRPC
     const newTenant: any = await new Promise((resolve, reject) => {
-      tenantClient.CreateTenant({ name: tenantName }, (err: any, res: any) =>
-        err ? reject(err) : resolve(res),
-      );
+      tenantClient.CreateTenant({ name: tenantName }, (err: any, res: any) => (err ? reject(err) : resolve(res)));
     });
 
     const newTenantId = newTenant.id;
@@ -326,10 +294,7 @@ export class AuthService {
     return newTenant;
   }
 
-  async updateUser(
-    userId: string,
-    input: { email?: string; password?: string },
-  ): Promise<AuthUser> {
+  async updateUser(userId: string, input: { email?: string; password?: string }): Promise<AuthUser> {
     return await this.provider.updateUser(userId, input);
   }
 }

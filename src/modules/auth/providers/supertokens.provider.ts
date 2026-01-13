@@ -34,12 +34,7 @@ export class SuperTokensProvider implements IAuthProvider {
 
   // --- 1. Basic Auth Operations ---
 
-  async login(
-    email: string,
-    password: string,
-    context?: any,
-    sessionPayload?: any,
-  ): Promise<LoginResponse> {
+  async login(email: string, password: string, context?: any, sessionPayload?: any): Promise<LoginResponse> {
     const response = await EmailPassword.signIn('public', email, password);
 
     if (response.status === 'WRONG_CREDENTIALS_ERROR') {
@@ -53,19 +48,11 @@ export class SuperTokensProvider implements IAuthProvider {
 
     // Create session (SuperTokens writes to req/res)
     if (context && context.req && context.res) {
-      await Session.createNewSession(
-        context.req,
-        context.res,
-        'public',
-        recipeUserId,
-        sessionPayload || {},
-      );
+      await Session.createNewSession(context.req, context.res, 'public', recipeUserId, sessionPayload || {});
     }
 
     // Get tokens from response header and return them
-    const tokens = context
-      ? this.getTokensFromHeaders(context.res)
-      : { accessToken: '', refreshToken: '' };
+    const tokens = context ? this.getTokensFromHeaders(context.res) : { accessToken: '', refreshToken: '' };
 
     return {
       user: {
@@ -95,9 +82,7 @@ export class SuperTokensProvider implements IAuthProvider {
       await Session.createNewSession(context.req, context.res, 'public', recipeUserId);
     }
 
-    const tokens = context
-      ? this.getTokensFromHeaders(context.res)
-      : { accessToken: '', refreshToken: '' };
+    const tokens = context ? this.getTokensFromHeaders(context.res) : { accessToken: '', refreshToken: '' };
 
     return {
       user: {
@@ -263,11 +248,7 @@ export class SuperTokensProvider implements IAuthProvider {
     await Multitenancy.disassociateUserFromTenant(tenantId, recipeUserId);
   }
 
-  async getTenantUsers(
-    tenantId: string,
-    limit: number = 10,
-    paginationToken?: string,
-  ): Promise<UserPaginationResult> {
+  async getTenantUsers(tenantId: string, limit: number = 10, paginationToken?: string): Promise<UserPaginationResult> {
     const response = await SuperTokens.getUsersNewestFirst({
       tenantId,
       limit,
