@@ -106,6 +106,11 @@ export class AuthService {
     return await this.provider.refreshToken(token, context);
   }
 
+  async logout(userId: string): Promise<boolean> {
+    await this.provider.logout(userId);
+    return true;
+  }
+
   // --- Helper Methods ---
 
   async getUser(userId: string): Promise<AuthUser | null> {

@@ -93,6 +93,7 @@ const typeDefs = `#graphql
     login(email: String!, password: String!): AuthResponse
     register(email: String!, password: String!): AuthResponse
     refreshToken(refreshToken: String!): RefreshResponse
+    logout: Boolean
 
     createTotpDevice(deviceName: String!): TotpDeviceResponse
     verifyTotpDevice(deviceName: String!, totp: String!): TotpVerifyResponse

@@ -76,6 +76,14 @@ const resolvers = {
       return await ctx.authService.refreshToken(args.refreshToken, ctx);
     },
 
+    logout: protect(async (_parent: any, _args: any, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId();
+      await ctx.authService.logout(userId);
+      await ctx.session!.revoke();
+
+      return true;
+    }),
+
     // MFA Operations
     createTotpDevice: protect(
       async (_parent: any, args: { deviceName: string }, ctx: MyContext) => {
