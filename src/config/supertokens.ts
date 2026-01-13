@@ -5,6 +5,7 @@ import Dashboard from 'supertokens-node/recipe/dashboard';
 import UserMetadata from 'supertokens-node/recipe/usermetadata';
 import MultiFactorAuth from 'supertokens-node/recipe/multifactorauth';
 import Totp from 'supertokens-node/recipe/totp';
+import Multitenancy from 'supertokens-node/recipe/multitenancy';
 
 export const initSuperTokens = () => {
   SuperTokens.init({
@@ -28,6 +29,7 @@ export const initSuperTokens = () => {
       UserMetadata.init(),
       MultiFactorAuth.init(),
       Totp.init(),
+      Multitenancy.init(),
     ],
   });
 };
