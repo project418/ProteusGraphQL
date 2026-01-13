@@ -6,6 +6,7 @@ export interface EntityPermission {
 
 export interface RolePolicy {
     description?: string;
+    mfa_required?: boolean;
     permissions: {
         [entityName: string]: EntityPermission;
     };

@@ -26,6 +26,7 @@ const typeDefs = `#graphql
     refreshToken: String!
     permissions: JSON
     requiresPasswordChange: Boolean
+    requiresMfa: Boolean
   }
 
   type RefreshResponse {
@@ -38,11 +39,23 @@ const typeDefs = `#graphql
     nextPaginationToken: String
   }
 
+  type TotpDeviceResponse {
+    deviceName: String!
+    secret: String!
+    qrCode: String!
+  }
+
+  type TotpVerifyResponse {
+    verified: Boolean!
+    accessToken: String
+  }
+
   # ---------------------------------------------------------
   # --- Policy / RBAC Types
   # ---------------------------------------------------------
   type RolePolicy {
     description: String
+    mfa_required: Boolean
     permissions: JSON
   }
 
@@ -80,6 +93,11 @@ const typeDefs = `#graphql
     login(email: String!, password: String!): AuthResponse
     register(email: String!, password: String!): AuthResponse
     refreshToken(refreshToken: String!): RefreshResponse
+
+    createTotpDevice(deviceName: String!): TotpDeviceResponse
+    verifyTotpDevice(deviceName: String!, totp: String!): TotpVerifyResponse
+    verifyMfa(totp: String!): TotpVerifyResponse
+    removeTotpDevice(deviceName: String!): Boolean
 
     # -- Password Reset
     sendPasswordResetEmail(email: String!): Boolean

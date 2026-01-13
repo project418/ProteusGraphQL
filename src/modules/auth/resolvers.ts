@@ -3,6 +3,7 @@ import EmailPassword from "supertokens-node/recipe/emailpassword"
 import Session from "supertokens-node/recipe/session"
 import Multitenancy from "supertokens-node/recipe/multitenancy"
 import UserMetadata from "supertokens-node/recipe/usermetadata"
+import Totp from "supertokens-node/recipe/totp"
 import { GraphQLError } from "graphql"
 import crypto from 'crypto'
 import { tenantClient } from "../../clients/proteus.client"
@@ -125,6 +126,8 @@ const resolvers = {
       let availableTenantsDetails: any[] = []
       let initialPermissions: any = null
 
+      let isMfaRequiredByPolicy = false
+
       if (tenantIds.length > 0) {
         activeTenantId = tenantIds[0]
         try {
@@ -134,7 +137,12 @@ const resolvers = {
           const role = await PolicyService.getUserRoleInTenant(user.id, activeTenantId)
           if (role) {
             const policy = await PolicyService.getRolePolicy(activeTenantId, role)
-            if (policy) initialPermissions = policy.permissions
+            if (policy) {
+              initialPermissions = policy.permissions
+              if (policy.mfa_required) {
+                isMfaRequiredByPolicy = true
+              }
+            }
           }
         } catch (e) { console.warn(e) }
 
@@ -146,9 +154,16 @@ const resolvers = {
         }
       }
 
-      await Session.createNewSession(context.req, context.res, "public", recipeUserId)
-      const tokens = getTokensFromHeaders(context.res)
+      const devices = await Totp.listDevices(user.id)
+      const hasMfaDevice = devices.devices.length > 0
 
+      await Session.createNewSession(context.req, context.res, "public", recipeUserId, {
+        mfaEnforced: isMfaRequiredByPolicy,
+        mfaEnabled: hasMfaDevice,
+        mfaVerified: false
+      })
+
+      const tokens = getTokensFromHeaders(context.res)
       const { metadata } = await UserMetadata.getUserMetadata(user.id)
       const userMeta = metadata as UserMetadataStructure
       const requiresPasswordChange = userMeta.requires_password_change || false
@@ -160,7 +175,8 @@ const resolvers = {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         permissions: initialPermissions,
-        requiresPasswordChange
+        requiresPasswordChange,
+        requiresMfa: isMfaRequiredByPolicy || hasMfaDevice
       }
     },
 
@@ -200,6 +216,84 @@ const resolvers = {
         throw new GraphQLError("Session refresh failed.", { extensions: { code: "SESSION_REFRESH_FAILED", http: { status: 401 } } })
       }
     },
+
+    createTotpDevice: protect(async (_parent: any, args: { deviceName: string }, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId()
+      const response = await Totp.createDevice(userId, undefined, args.deviceName)
+
+      if (response.status === "DEVICE_ALREADY_EXISTS_ERROR") {
+        throw new GraphQLError("Device name already exists.", { extensions: { code: "BAD_REQUEST" } })
+      }
+
+      if (response.status === "UNKNOWN_USER_ID_ERROR") {
+        throw new GraphQLError("User not found.", { extensions: { code: "UNAUTHENTICATED" } })
+      }
+
+      return {
+        deviceName: response.deviceName,
+        secret: response.secret,
+        qrCode: response.qrCodeString
+      }
+    }, { allowMfaSetup: true }),
+
+    verifyTotpDevice: protect(async (_parent: any, args: { deviceName: string, totp: string }, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId()
+      const response = await Totp.verifyDevice("public", userId, args.deviceName, args.totp)
+
+      if (response.status === "UNKNOWN_DEVICE_ERROR") {
+        throw new GraphQLError("Device not found.", { extensions: { code: "BAD_REQUEST" } })
+      }
+
+      if (response.status === "INVALID_TOTP_ERROR") {
+        throw new GraphQLError("Invalid code", { extensions: { code: "INVALID_MFA_CODE" } })
+      }
+
+      await ctx.session!.mergeIntoAccessTokenPayload({
+        mfaEnabled: true,
+        mfaVerified: true
+      })
+
+      const tokens = getTokensFromHeaders(ctx.res)
+      return {
+        verified: true,
+        accessToken: tokens.accessToken
+      }
+    }, { allowMfaSetup: true }),
+
+    verifyMfa: protect(async (_parent: any, args: { totp: string }, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId()
+      const response = await Totp.verifyTOTP("public", userId, args.totp)
+
+      if (response.status === "UNKNOWN_USER_ID_ERROR") {
+        throw new GraphQLError("User not found.", { extensions: { code: "UNAUTHENTICATED" } })
+      }
+
+      if (response.status === "INVALID_TOTP_ERROR") {
+        throw new GraphQLError("Invalid code", { extensions: { code: "INVALID_MFA_CODE" } })
+      }
+
+      await ctx.session!.mergeIntoAccessTokenPayload({ mfaVerified: true })
+
+      const tokens = getTokensFromHeaders(ctx.res)
+      return {
+        verified: true,
+        accessToken: tokens.accessToken
+      }
+    }, { requireMfaVerification: false}),
+
+    removeTotpDevice: protect(async (_parent: any, args: { deviceName: string }, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId()
+      await Totp.removeDevice(userId, args.deviceName)
+
+      const devices = await Totp.listDevices(userId)
+      const hasRemaining = devices.devices.length > 0
+
+      await ctx.session!.mergeIntoAccessTokenPayload({
+        mfaEnabled: hasRemaining,
+        mfaVerified: hasRemaining
+      })
+      return true
+    }),
 
     sendPasswordResetEmail: async (_parent: any, args: { email: string }, ctx: MyContext) => {
       const usersResponse = await SuperTokens.listUsersByAccountInfo("public", { email: args.email })
@@ -265,6 +359,7 @@ const resolvers = {
 
           const adminPolicy: RolePolicy = {
             description: "Root Admin Policy",
+            mfa_required: true,
             permissions: {
               "system_iam": { access: true, actions: ["*"] },
               "*": { access: true, actions: ["*"] }

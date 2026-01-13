@@ -3,6 +3,8 @@ import Session from "supertokens-node/recipe/session"
 import EmailPassword from "supertokens-node/recipe/emailpassword"
 import Dashboard from "supertokens-node/recipe/dashboard"
 import UserMetadata from "supertokens-node/recipe/usermetadata";
+import MultiFactorAuth from "supertokens-node/recipe/multifactorauth";
+import Totp from "supertokens-node/recipe/totp";
 
 export const initSuperTokens = () => {
   SuperTokens.init({
@@ -23,7 +25,9 @@ export const initSuperTokens = () => {
         getTokenTransferMethod: () => "header"
       }),
       Dashboard.init(),
-      UserMetadata.init()
+      UserMetadata.init(),
+      MultiFactorAuth.init(),
+      Totp.init()
     ],
   })
 }
