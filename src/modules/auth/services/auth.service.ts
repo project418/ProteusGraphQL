@@ -17,7 +17,7 @@ import { TenantService } from '../../tenant/services/tenant.service';
 export class AuthService {
   constructor(
     private provider: IAuthProvider,
-    private tenantService: TenantService
+    private tenantService: TenantService,
   ) {}
 
   /**

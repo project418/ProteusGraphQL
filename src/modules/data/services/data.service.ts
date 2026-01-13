@@ -5,7 +5,6 @@ import { MyContext } from '../../../context';
 import { sanitizeRecord, sanitizeRecords } from '../../auth/utils/rbac-helper';
 
 export class DataService {
-  
   // --- Helpers ---
   private mapRecord(record: any) {
     if (!record) return null;
@@ -25,13 +24,7 @@ export class DataService {
     return sanitizeRecord(mapped, entityId, context);
   }
 
-  async queryRecords(
-    entityId: string,
-    filters: any[],
-    sort: any,
-    pagination: any,
-    context: MyContext
-  ) {
+  async queryRecords(entityId: string, filters: any[], sort: any, pagination: any, context: MyContext) {
     const args = { entity_id: entityId, filters, sort, pagination };
     const res: any = await grpcCall(dataClient, 'Query', args, context);
     const mappedList = res.data ? res.data.map((r: any) => this.mapRecord(r)) : [];

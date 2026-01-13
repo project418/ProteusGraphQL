@@ -21,7 +21,7 @@ import dataResolvers from './modules/data/resolvers';
 import authTypeDefs from './modules/auth/typeDefs';
 import authResolvers from './modules/auth/resolvers';
 
-import { MyContext } from './context'; 
+import { MyContext } from './context';
 import { formatError } from './utils/error-handler';
 
 import { AuthService } from './modules/auth/services/auth.service';

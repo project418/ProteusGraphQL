@@ -4,7 +4,6 @@ import { grpcCall } from '../../../utils/grpc-helper';
 import { MyContext } from '../../../context';
 
 export class SchemaService {
-  
   // --- Helpers ---
   private mapEntity(entity: any) {
     if (!entity) return null;
@@ -17,7 +16,7 @@ export class SchemaService {
     return {
       ...field,
       ui_config: structToJson(field.ui_config),
-      validation: structToJson(field.validation)
+      validation: structToJson(field.validation),
     };
   }
 
@@ -26,7 +25,7 @@ export class SchemaService {
   async listEntities(context: MyContext) {
     const res: any = await grpcCall(schemaClient, 'ListEntities', {}, context);
     return {
-      entities: res.entities.map((e: any) => this.mapEntity(e))
+      entities: res.entities.map((e: any) => this.mapEntity(e)),
     };
   }
 

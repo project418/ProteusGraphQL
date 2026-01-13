@@ -3,9 +3,8 @@ import { grpcCall } from '../../../utils/grpc-helper';
 import { MyContext } from '../../../context';
 
 export class TenantService {
-  
   // --- Mutations ---
-  
+
   async createTenant(name: string, context?: MyContext) {
     return await grpcCall(tenantClient, 'CreateTenant', { name }, context || ({} as MyContext));
   }

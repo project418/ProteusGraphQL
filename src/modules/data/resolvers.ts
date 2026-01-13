@@ -17,13 +17,7 @@ const resolvers = {
 
     queryRecords: async (_parent: any, args: any, ctx: MyContext) => {
       checkEntityAccess(ctx, args.entity_id, 'read');
-      return await ctx.dataService.queryRecords(
-        args.entity_id,
-        args.filters,
-        args.sort,
-        args.pagination,
-        ctx
-      );
+      return await ctx.dataService.queryRecords(args.entity_id, args.filters, args.sort, args.pagination, ctx);
     },
   },
 
@@ -35,12 +29,7 @@ const resolvers = {
 
     updateRecord: async (_parent: any, args: any, ctx: MyContext) => {
       checkEntityAccess(ctx, args.entity_id, 'update');
-      return await ctx.dataService.updateRecord(
-        args.entity_id,
-        args.record_id,
-        args.data,
-        ctx
-      );
+      return await ctx.dataService.updateRecord(args.entity_id, args.record_id, args.data, ctx);
     },
 
     deleteRecord: async (_parent: any, args: any, ctx: MyContext) => {

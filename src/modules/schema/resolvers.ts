@@ -38,7 +38,7 @@ const resolvers = {
     deleteEntity: async (_parent: any, args: any, ctx: MyContext) => {
       return await ctx.schemaService.deleteEntity(args.id, ctx);
     },
-    
+
     // -- Field Operations
     createField: async (_parent: any, args: any, ctx: MyContext) => {
       return await ctx.schemaService.createField(args, ctx);
