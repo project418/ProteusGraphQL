@@ -37,7 +37,7 @@ export interface UserPaginationResult {
 
 export interface MfaVerificationResult {
   verified: boolean;
-  tokens?: AuthTokens;
+  accessToken?: string;
 }
 
 export interface AuthServiceResponse {

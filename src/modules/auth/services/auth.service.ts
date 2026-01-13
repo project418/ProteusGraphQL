@@ -189,16 +189,18 @@ export class AuthService {
     totp: string,
     context: IAuthContext,
   ): Promise<MfaVerificationResult> {
-    const verified = await this.provider.verifyTotpDevice(userId, deviceName, totp);
+    const result = await this.provider.verifyTotpDevice(userId, deviceName, totp);
 
-    if (verified && context.session) {
+    if (result.verified && context.session) {
       await context.session.mergeIntoAccessTokenPayload({
         mfaEnabled: true,
         mfaVerified: true,
       });
+
+      result.accessToken = await context.session.getAccessToken();
     }
 
-    return { verified: true };
+    return result;
   }
 
   async verifyMfa(userId: string, totp: string, context: IAuthContext): Promise<MfaVerificationResult> {
@@ -206,6 +208,8 @@ export class AuthService {
 
     if (result.verified && context.session) {
       await context.session.mergeIntoAccessTokenPayload({ mfaVerified: true });
+
+      result.accessToken = await context.session.getAccessToken();
     }
 
     return result;

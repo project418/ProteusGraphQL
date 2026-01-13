@@ -206,7 +206,7 @@ export class SuperTokensProvider implements IAuthProvider {
     };
   }
 
-  async verifyTotpDevice(userId: string, deviceName: string, code: string): Promise<boolean> {
+  async verifyTotpDevice(userId: string, deviceName: string, code: string): Promise<MfaVerificationResult> {
     const response = await Totp.verifyDevice('public', userId, deviceName, code);
 
     if (response.status === 'UNKNOWN_DEVICE_ERROR') {
@@ -215,7 +215,8 @@ export class SuperTokensProvider implements IAuthProvider {
     if (response.status === 'INVALID_TOTP_ERROR') {
       throw new GraphQLError('Invalid code.');
     }
-    return true;
+    
+    return { verified: true };
   }
 
   async verifyMfaCode(userId: string, code: string): Promise<MfaVerificationResult> {

@@ -44,7 +44,7 @@ export interface IAuthProvider {
    */
   createTotpDevice(userId: string, deviceName: string): Promise<TotpDevice>;
 
-  verifyTotpDevice(userId: string, deviceName: string, code: string): Promise<boolean>;
+  verifyTotpDevice(userId: string, deviceName: string, code: string): Promise<MfaVerificationResult>;
 
   verifyMfaCode(userId: string, code: string): Promise<MfaVerificationResult>;
 

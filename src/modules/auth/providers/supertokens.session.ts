@@ -12,6 +12,10 @@ export class SuperTokensSession implements ISession {
     return this.session.getAccessTokenPayload();
   }
 
+  async getAccessToken(): Promise<string> {
+    return await this.session.getAccessToken();
+  }
+
   async mergeIntoAccessTokenPayload(payload: any): Promise<void> {
     await this.session.mergeIntoAccessTokenPayload(payload);
   }
