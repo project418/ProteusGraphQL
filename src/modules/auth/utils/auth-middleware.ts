@@ -1,6 +1,5 @@
-//
 import { GraphQLError } from 'graphql';
-import { MyContext } from './grpc-helper';
+import { MyContext } from '../../../utils/grpc-helper';
 
 type ResolverFn = (parent: any, args: any, context: MyContext, info: any) => any;
 
@@ -9,11 +8,11 @@ interface ProtectOptions {
   allowMfaSetup?: boolean;
 }
 
-const GLOBAL_MFA_ENFORCED = false; 
+const GLOBAL_MFA_ENFORCED = false;
 
 export const protect = (
-  resolver: ResolverFn, 
-  options: ProtectOptions = { requireMfaVerification: true, allowMfaSetup: false }
+  resolver: ResolverFn,
+  options: ProtectOptions = { requireMfaVerification: true, allowMfaSetup: false },
 ): ResolverFn => {
   return async (parent, args, context, info) => {
     if (!context.session) {
@@ -26,7 +25,7 @@ export const protect = (
     }
 
     const payload = context.session.getAccessTokenPayload();
-    
+
     const mfaEnforced = payload.mfaEnforced === true || GLOBAL_MFA_ENFORCED;
     const hasMfaDevice = payload.mfaEnabled === true;
     const isMfaVerified = payload.mfaVerified === true;
@@ -37,14 +36,12 @@ export const protect = (
           extensions: { code: 'MFA_SETUP_REQUIRED', http: { status: 403 } },
         });
       }
-    }
-
-    else if (hasMfaDevice && !isMfaVerified) {
-        if (options.requireMfaVerification) {
-            throw new GraphQLError('MFA verification required. Please verify your code.', {
-                extensions: { code: 'MFA_VERIFY_REQUIRED', http: { status: 403 } }
-            });
-        }
+    } else if (hasMfaDevice && !isMfaVerified) {
+      if (options.requireMfaVerification) {
+        throw new GraphQLError('MFA verification required. Please verify your code.', {
+          extensions: { code: 'MFA_VERIFY_REQUIRED', http: { status: 403 } },
+        });
+      }
     }
 
     return resolver(parent, args, context, info);

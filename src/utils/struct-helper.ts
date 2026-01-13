@@ -19,9 +19,9 @@ function valueToJson(valueObj: any): any {
   if ('stringValue' in valueObj) return valueObj.stringValue;
   if ('numberValue' in valueObj) return valueObj.numberValue;
   if ('boolValue' in valueObj) return valueObj.boolValue;
-  
+
   if ('structValue' in valueObj) return structToJson(valueObj.structValue);
-  
+
   if ('listValue' in valueObj && valueObj.listValue.values) {
     return valueObj.listValue.values.map((v: any) => valueToJson(v));
   }

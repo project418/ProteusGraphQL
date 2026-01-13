@@ -9,9 +9,9 @@ import bodyParser from 'body-parser';
 import { mergeTypeDefs, mergeResolvers } from '@graphql-tools/merge';
 
 import { initSuperTokens } from './config/supertokens';
-import { middleware, errorHandler } from "supertokens-node/framework/express";
-import { verifySession } from "supertokens-node/recipe/session/framework/express";
-import { SessionRequest } from "supertokens-node/framework/express";
+import { middleware, errorHandler } from 'supertokens-node/framework/express';
+import { verifySession } from 'supertokens-node/recipe/session/framework/express';
+import { SessionRequest } from 'supertokens-node/framework/express';
 import SuperTokens from 'supertokens-node';
 
 import schemaTypeDefs from './modules/schema/typeDefs';
@@ -23,9 +23,16 @@ import authResolvers from './modules/auth/resolvers';
 
 import { MyContext } from './utils/grpc-helper';
 import { formatError } from './utils/error-handler';
-import { PolicyService } from './services/policy.service';
+
+import { AuthService } from './modules/auth/services/auth.service';
+import { SuperTokensProvider } from './modules/auth/providers/supertokens.provider';
+import { SuperTokensSession } from './modules/auth/providers/supertokens.session';
 
 initSuperTokens();
+
+// --- START AUTH SERVICE ---
+const authProvider = new SuperTokensProvider();
+const authService = new AuthService(authProvider);
 
 const rootTypeDefs = `#graphql
   type Query {
@@ -37,18 +44,9 @@ const rootTypeDefs = `#graphql
   }
 `;
 
-const typeDefs = mergeTypeDefs([
-  rootTypeDefs,
-  schemaTypeDefs, 
-  dataTypeDefs, 
-  authTypeDefs
-]);
+const typeDefs = mergeTypeDefs([rootTypeDefs, schemaTypeDefs, dataTypeDefs, authTypeDefs]);
 
-const resolvers = mergeResolvers([
-  schemaResolvers, 
-  dataResolvers, 
-  authResolvers
-]);
+const resolvers = mergeResolvers([schemaResolvers, dataResolvers, authResolvers]);
 
 const startServer = async () => {
   const app = express();
@@ -65,53 +63,58 @@ const startServer = async () => {
 
   app.use(
     cors({
-      origin: "http://localhost:3000",
-      allowedHeaders: ["content-type", ...SuperTokens.getAllCORSHeaders(), "x-tenant-id"],
+      origin: 'http://localhost:3000',
+      allowedHeaders: ['content-type', ...SuperTokens.getAllCORSHeaders(), 'x-tenant-id'],
       credentials: true,
-    })
+    }),
   );
 
   app.use(middleware());
-  
+
   app.use(
     '/graphql',
     bodyParser.json(),
-    verifySession({ sessionRequired: false }), 
-    
+    verifySession({ sessionRequired: false }),
+
     expressMiddleware(server, {
-      context: async ({ req, res }: { req: Request, res: Response }) => {
-        const session = (req as SessionRequest).session;
-        
+      context: async ({ req, res }: { req: Request; res: Response }) => {
+        const stSession = (req as SessionRequest).session;
+
+        let session;
+        if (stSession) {
+          session = new SuperTokensSession(stSession);
+        }
+
         const headerTenantId = req.headers['x-tenant-id'] as string;
-        const tenantId = headerTenantId || ""; 
-        
+        const tenantId = headerTenantId || '';
+
         let currentUserRole: string | undefined = undefined;
         let currentPermissions: any = undefined;
 
         if (session && tenantId) {
-            const userId = session.getUserId();
-            
-            const roleName = await PolicyService.getUserRoleInTenant(userId, tenantId);
-            if (roleName) {
-                currentUserRole = roleName;
-                
-                const policy = await PolicyService.getRolePolicy(tenantId, roleName);
-                if (policy) {
-                    currentPermissions = policy.permissions;
-                }
+          const userId = session.getUserId();
+
+          const roleName = await authService.getUserRoleInTenant(userId, tenantId);
+          if (roleName) {
+            currentUserRole = roleName;
+            const policy = await authService.getRolePolicy(tenantId, roleName);
+            if (policy) {
+              currentPermissions = policy.permissions;
             }
+          }
         }
 
         return {
           session,
+          authService,
           tenantId,
           currentUserRole,
           currentPermissions,
           req,
-          res
+          res,
         };
       },
-    })
+    }),
   );
 
   app.use(errorHandler());

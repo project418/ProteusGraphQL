@@ -10,7 +10,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   enums: String,
   defaults: true,
   oneofs: true,
-  includeDirs: [path.join(__dirname, '../../node_modules/google-proto-files')] 
+  includeDirs: [path.join(__dirname, '../../node_modules/google-proto-files')],
 });
 
 const grpcObject = grpc.loadPackageDefinition(packageDefinition) as any;
