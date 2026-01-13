@@ -21,18 +21,24 @@ import dataResolvers from './modules/data/resolvers';
 import authTypeDefs from './modules/auth/typeDefs';
 import authResolvers from './modules/auth/resolvers';
 
-import { MyContext } from './utils/grpc-helper';
+import { MyContext } from './context'; 
 import { formatError } from './utils/error-handler';
 
 import { AuthService } from './modules/auth/services/auth.service';
+import { SchemaService } from './modules/schema/services/schema.service';
+import { DataService } from './modules/data/services/data.service';
+import { TenantService } from './modules/tenant/services/tenant.service';
 import { SuperTokensProvider } from './modules/auth/providers/supertokens.provider';
 import { SuperTokensSession } from './modules/auth/providers/supertokens.session';
 
 initSuperTokens();
 
-// --- START AUTH SERVICE ---
 const authProvider = new SuperTokensProvider();
-const authService = new AuthService(authProvider);
+const tenantService = new TenantService();
+const schemaService = new SchemaService();
+const dataService = new DataService();
+
+const authService = new AuthService(authProvider, tenantService);
 
 const rootTypeDefs = `#graphql
   type Query {
@@ -107,6 +113,9 @@ const startServer = async () => {
         return {
           session,
           authService,
+          schemaService,
+          dataService,
+          tenantService,
           tenantId,
           currentUserRole,
           currentPermissions,

@@ -1,5 +1,5 @@
 import { GraphQLError } from 'graphql';
-import { MyContext } from '../../../utils/grpc-helper';
+import { MyContext } from '../../../context';
 
 type ResolverFn = (parent: any, args: any, context: MyContext, info: any) => any;
 

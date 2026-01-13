@@ -1,5 +1,5 @@
 import { GraphQLError } from 'graphql';
-import { MyContext } from '../../utils/grpc-helper';
+import { MyContext } from '../../context';
 import { protect } from './utils/auth-middleware';
 import { checkEntityAccess } from './utils/rbac-helper';
 import { RolePolicy } from './interfaces/rbac.interface';
@@ -118,7 +118,7 @@ const resolvers = {
     // Tenant Creation
     createOwnTenant: protect(async (_parent: any, args: { name: string }, ctx: MyContext) => {
       const userId = ctx.session!.getUserId();
-      return await ctx.authService.createOwnTenant(userId, args.name);
+      return await ctx.authService.createOwnTenant(userId, args.name, ctx);
     }),
 
     // Self Service

@@ -12,10 +12,13 @@ import {
 import { IAuthContext } from '../interfaces/auth-context.interface';
 import { RolePolicy } from '../interfaces/rbac.interface';
 import { tenantClient } from '../../../clients/proteus.client';
-import { grpcCall } from '../../../utils/grpc-helper';
+import { TenantService } from '../../tenant/services/tenant.service';
 
 export class AuthService {
-  constructor(private provider: IAuthProvider) {}
+  constructor(
+    private provider: IAuthProvider,
+    private tenantService: TenantService
+  ) {}
 
   /**
    * Login Operation: Logs in with Auth Provider, then collects Tenant and Authorization information.
@@ -40,7 +43,7 @@ export class AuthService {
 
       try {
         const tempCtx = { ...context, tenantId: activeTenantId } as any;
-        activeTenantDetails = await grpcCall(tenantClient, 'GetTenant', { id: activeTenantId }, tempCtx);
+        activeTenantDetails = await this.tenantService.getTenant(activeTenantId, tempCtx);
 
         // Role check via Provider instead of PolicyService
         const role = await this.provider.getUserRoleInTenant(user.id, activeTenantId);
@@ -61,7 +64,7 @@ export class AuthService {
       for (const tId of tenantIds) {
         try {
           const tempCtx = { ...context, tenantId: tId } as any;
-          const tDetails = await grpcCall(tenantClient, 'GetTenant', { id: tId }, tempCtx);
+          const tDetails = await this.tenantService.getTenant(tId, tempCtx);
           availableTenantsDetails.push(tDetails);
         } catch (error) {
           console.warn(`Error fetching tenant ${tId}:`, error);
@@ -266,11 +269,9 @@ export class AuthService {
     return true;
   }
 
-  async createOwnTenant(userId: string, tenantName: string): Promise<any> {
-    // 1. Create Tenant via gRPC
-    const newTenant: any = await new Promise((resolve, reject) => {
-      tenantClient.CreateTenant({ name: tenantName }, (err: any, res: any) => (err ? reject(err) : resolve(res)));
-    });
+  async createOwnTenant(userId: string, tenantName: string, context: IAuthContext): Promise<any> {
+    // 1. Create Tenant via TenantService
+    const newTenant: any = await this.tenantService.createTenant(tenantName, context as any);
 
     const newTenantId = newTenant.id;
 
@@ -287,7 +288,6 @@ export class AuthService {
       },
     };
 
-    // Provider instead of PolicyService
     await this.provider.setRolePolicy(newTenantId, 'admin', adminPolicy);
     await this.provider.assignRoleToUser(userId, newTenantId, 'admin');
 

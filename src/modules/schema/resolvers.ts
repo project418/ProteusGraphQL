@@ -1,23 +1,5 @@
 import { GraphQLJSON } from 'graphql-type-json';
-import { schemaClient } from '../../clients/proteus.client';
-import { structToJson } from '../../utils/struct-helper';
-import { grpcCall, MyContext } from '../../utils/grpc-helper';
-
-// --- Helpers ---
-const mapEntity = (entity: any) => {
-  if (!entity) return null;
-  const cleanFields = entity.fields ? entity.fields.map(mapField) : [];
-  return { ...entity, fields: cleanFields };
-};
-
-const mapField = (field: any) => {
-  if (!field) return null;
-  return {
-    ...field,
-    ui_config: structToJson(field.ui_config),
-    validation: structToJson(field.validation),
-  };
-};
+import { MyContext } from '../../context';
 
 const resolvers = {
   JSON: GraphQLJSON,
@@ -31,52 +13,43 @@ const resolvers = {
 
   SchemaQueries: {
     entities: async (_parent: any, _args: any, ctx: MyContext) => {
-      const res: any = await grpcCall(schemaClient, 'ListEntities', {}, ctx);
-      return {
-        entities: res.entities.map(mapEntity),
-      };
+      return await ctx.schemaService.listEntities(ctx);
     },
 
     entity: async (_parent: any, args: { id: string }, ctx: MyContext) => {
-      const res = await grpcCall(schemaClient, 'GetEntity', args, ctx);
-      return mapEntity(res);
+      return await ctx.schemaService.getEntity(args.id, ctx);
     },
 
     field: async (_parent: any, args: { id: string }, ctx: MyContext) => {
-      const res = await grpcCall(schemaClient, 'GetField', args, ctx);
-      return mapField(res);
+      return await ctx.schemaService.getField(args.id, ctx);
     },
   },
 
   SchemaMutations: {
     // -- Entity Operations
     createEntity: async (_parent: any, args: any, ctx: MyContext) => {
-      const res = await grpcCall(schemaClient, 'CreateEntity', args, ctx);
-      return mapEntity(res);
+      return await ctx.schemaService.createEntity(args, ctx);
     },
 
     updateEntity: async (_parent: any, args: any, ctx: MyContext) => {
-      const res = await grpcCall(schemaClient, 'UpdateEntity', args, ctx);
-      return mapEntity(res);
+      return await ctx.schemaService.updateEntity(args, ctx);
     },
 
     deleteEntity: async (_parent: any, args: any, ctx: MyContext) => {
-      return await grpcCall(schemaClient, 'DeleteEntity', args, ctx);
+      return await ctx.schemaService.deleteEntity(args.id, ctx);
     },
-
+    
     // -- Field Operations
     createField: async (_parent: any, args: any, ctx: MyContext) => {
-      const res = await grpcCall(schemaClient, 'CreateField', args, ctx);
-      return mapField(res);
+      return await ctx.schemaService.createField(args, ctx);
     },
 
     updateField: async (_parent: any, args: any, ctx: MyContext) => {
-      const res = await grpcCall(schemaClient, 'UpdateField', args, ctx);
-      return mapField(res);
+      return await ctx.schemaService.updateField(args, ctx);
     },
 
     deleteField: async (_parent: any, args: any, ctx: MyContext) => {
-      return await grpcCall(schemaClient, 'DeleteField', args, ctx);
+      return await ctx.schemaService.deleteField(args.id, ctx);
     },
   },
 };
