@@ -25,15 +25,7 @@ export class SuperTokensProvider implements IAuthProvider {
     this.cache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
   }
 
-  // --- Helper Method: Read Token From Header ---
-  private getTokensFromHeaders(res: any): AuthTokens {
-    const accessToken = res.getHeader('st-access-token') as string;
-    const refreshToken = res.getHeader('st-refresh-token') as string;
-    return { accessToken, refreshToken };
-  }
-
   // --- 1. Basic Auth Operations ---
-
   async login(email: string, password: string, context?: any, sessionPayload?: any): Promise<LoginResponse> {
     const response = await EmailPassword.signIn('public', email, password);
 
@@ -46,24 +38,28 @@ export class SuperTokensProvider implements IAuthProvider {
     const user = response.user;
     const recipeUserId = new SuperTokens.RecipeUserId(user.id);
 
-    // Create session (SuperTokens writes to req/res)
-    if (context && context.req && context.res) {
-      await Session.createNewSession(context.req, context.res, 'public', recipeUserId, sessionPayload || {});
+    try {
+      const session = await Session.createNewSessionWithoutRequestResponse('public', recipeUserId, sessionPayload || {});
+      const tokens = session.getAllSessionTokensDangerously();
+
+      return {
+        user: {
+          id: user.id,
+          email: user.emails[0],
+          timeJoined: user.timeJoined,
+          tenantIds: user.tenantIds,
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken || '',
+        },
+        status: 'OK',
+      };
+    } catch (error) {
+      throw new GraphQLError('Session creation failed.', {
+        extensions: { code: 'SESSION_CREATION_FAILED', http: { status: 401 } },
+      });
     }
-
-    // Get tokens from response header and return them
-    const tokens = context ? this.getTokensFromHeaders(context.res) : { accessToken: '', refreshToken: '' };
-
-    return {
-      user: {
-        id: user.id,
-        email: user.emails[0],
-        timeJoined: user.timeJoined,
-        tenantIds: user.tenantIds,
-      },
-      tokens,
-      status: 'OK',
-    };
   }
 
   async register(email: string, password: string, context?: any): Promise<RegisterResponse> {
@@ -78,35 +74,51 @@ export class SuperTokensProvider implements IAuthProvider {
     const user = response.user;
     const recipeUserId = new SuperTokens.RecipeUserId(user.id);
 
-    if (context && context.req && context.res) {
-      await Session.createNewSession(context.req, context.res, 'public', recipeUserId);
+    try {
+      const session = await Session.createNewSessionWithoutRequestResponse('public', recipeUserId);
+      const tokens = session.getAllSessionTokensDangerously();
+
+      return {
+        user: {
+          id: user.id,
+          email: user.emails[0],
+          timeJoined: user.timeJoined,
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken || '',
+        },
+        status: 'OK',
+      };
+    } catch (err: any) {
+      throw new GraphQLError('Session creation failed.', {
+        extensions: { code: 'SESSION_CREATION_FAILED', http: { status: 401 } },
+      });
     }
-
-    const tokens = context ? this.getTokensFromHeaders(context.res) : { accessToken: '', refreshToken: '' };
-
-    return {
-      user: {
-        id: user.id,
-        email: user.emails[0],
-        timeJoined: user.timeJoined,
-      },
-      tokens,
-      status: 'OK',
-    };
   }
 
   async refreshToken(refreshToken: string, context?: any): Promise<AuthTokens> {
-    if (!context || !context.req || !context.res) {
-      throw new Error('Context is required for refreshing session in SuperTokens');
-    }
-
-    // Manually set header for SuperTokens refresh operation
-    context.req.headers['st-refresh-token'] = refreshToken;
-
     try {
-      await Session.refreshSession(context.req, context.res);
-      return this.getTokensFromHeaders(context.res);
-    } catch (err) {
+      const result = await Session.refreshSessionWithoutRequestResponse(refreshToken)
+      const sessionData = result.getAllSessionTokensDangerously();
+
+      return {
+        accessToken: sessionData.accessToken,
+        refreshToken: sessionData.refreshToken || '',
+      }
+    } catch (err: any) {
+      if (err.type === Session.Error.TRY_REFRESH_TOKEN) {
+         throw new GraphQLError('Session invalid, please login again.', {
+            extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } },
+         });
+      }
+      
+      if (err.type === Session.Error.TOKEN_THEFT_DETECTED) {
+         throw new GraphQLError('Token theft detected, session revoked.', {
+            extensions: { code: 'TOKEN_THEFT', http: { status: 401 } },
+         });
+      }
+
       throw new GraphQLError('Session refresh failed.', {
         extensions: { code: 'SESSION_REFRESH_FAILED', http: { status: 401 } },
       });

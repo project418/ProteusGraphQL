@@ -22,9 +22,7 @@ export const initSuperTokens = () => {
     },
     recipeList: [
       EmailPassword.init(),
-      Session.init({
-        getTokenTransferMethod: () => 'header',
-      }),
+      Session.init(),
       Dashboard.init(),
       UserMetadata.init(),
       MultiFactorAuth.init(),
