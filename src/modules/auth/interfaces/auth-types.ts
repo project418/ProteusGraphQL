@@ -1,5 +1,3 @@
-// src/modules/auth/interfaces/auth-types.ts
-
 export interface AuthUser {
   id: string;
   email: string;
@@ -15,12 +13,14 @@ export interface AuthTokens {
 export interface LoginResponse {
   user: AuthUser;
   tokens: AuthTokens;
+  sessionHandle: string;
   status?: string;
 }
 
 export interface RegisterResponse {
   user: AuthUser;
   tokens: AuthTokens;
+  sessionHandle: string;
   status?: string;
 }
 

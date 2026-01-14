@@ -26,7 +26,7 @@ export class SuperTokensProvider implements IAuthProvider {
   }
 
   // --- 1. Basic Auth Operations ---
-  async login(email: string, password: string, context?: any, sessionPayload?: any): Promise<LoginResponse> {
+  async verifyCredentials(email: string, password: string): Promise<AuthUser> {
     const response = await EmailPassword.signIn('public', email, password);
 
     if (response.status === 'WRONG_CREDENTIALS_ERROR') {
@@ -36,33 +36,15 @@ export class SuperTokensProvider implements IAuthProvider {
     }
 
     const user = response.user;
-    const recipeUserId = new SuperTokens.RecipeUserId(user.id);
-
-    try {
-      const session = await Session.createNewSessionWithoutRequestResponse('public', recipeUserId, sessionPayload || {});
-      const tokens = session.getAllSessionTokensDangerously();
-
-      return {
-        user: {
-          id: user.id,
-          email: user.emails[0],
-          timeJoined: user.timeJoined,
-          tenantIds: user.tenantIds,
-        },
-        tokens: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken || '',
-        },
-        status: 'OK',
-      };
-    } catch (error) {
-      throw new GraphQLError('Session creation failed.', {
-        extensions: { code: 'SESSION_CREATION_FAILED', http: { status: 401 } },
-      });
-    }
+    return {
+      id: user.id,
+      email: user.emails[0],
+      timeJoined: user.timeJoined,
+      tenantIds: user.tenantIds,
+    };
   }
 
-  async register(email: string, password: string, context?: any): Promise<RegisterResponse> {
+  async createUser(email: string, password: string): Promise<AuthUser> {
     const response = await EmailPassword.signUp('public', email, password);
 
     if (response.status === 'EMAIL_ALREADY_EXISTS_ERROR') {
@@ -72,25 +54,29 @@ export class SuperTokensProvider implements IAuthProvider {
     }
 
     const user = response.user;
-    const recipeUserId = new SuperTokens.RecipeUserId(user.id);
+    
+    return {
+      id: user.id,
+      email: user.emails[0],
+      timeJoined: user.timeJoined,
+    };
+  }
 
+  async createNewSession(userId: string, payload: any): Promise<{ tokens: AuthTokens; sessionHandle: string }> {
+    const recipeUserId = new SuperTokens.RecipeUserId(userId);
+    
     try {
-      const session = await Session.createNewSessionWithoutRequestResponse('public', recipeUserId);
+      const session = await Session.createNewSessionWithoutRequestResponse('public', recipeUserId, payload);
       const tokens = session.getAllSessionTokensDangerously();
 
       return {
-        user: {
-          id: user.id,
-          email: user.emails[0],
-          timeJoined: user.timeJoined,
-        },
         tokens: {
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken || '',
         },
-        status: 'OK',
+        sessionHandle: session.getHandle(),
       };
-    } catch (err: any) {
+    } catch (error) {
       throw new GraphQLError('Session creation failed.', {
         extensions: { code: 'SESSION_CREATION_FAILED', http: { status: 401 } },
       });
@@ -128,6 +114,10 @@ export class SuperTokensProvider implements IAuthProvider {
   async logout(userId: string): Promise<void> {
     // In SuperTokens logout is usually managed from frontend or session is revoked
     await Session.revokeAllSessionsForUser(userId);
+  }
+
+  async updateSessionPayload(sessionHandle: string, payload: any): Promise<void> {
+    await Session.mergeIntoAccessTokenPayload(sessionHandle, payload);
   }
 
   // --- 2. User Management ---

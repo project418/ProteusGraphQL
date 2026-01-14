@@ -24,11 +24,8 @@ export class AuthService {
    * Login Operation: Logs in with Auth Provider, then collects Tenant and Authorization information.
    */
   async login(email: string, password: string, context: IAuthContext): Promise<AuthServiceResponse> {
-    // 1. Login via Provider
-    const loginResult = await this.provider.login(email, password, context);
-    const user = loginResult.user;
+    const user = await this.provider.verifyCredentials(email, password);
 
-    // 2. Get Tenant Information and Permissions
     const rawTenantIds = user.tenantIds || [];
     const tenantIds = rawTenantIds.filter((id) => id !== 'public');
 
@@ -75,12 +72,20 @@ export class AuthService {
     const devices = await this.provider.listTotpDevices(user.id);
     const hasMfaDevice = devices.length > 0;
 
+    const sessionPayload = {
+      mfaEnforced: isMfaRequiredByPolicy,
+      mfaEnabled: hasMfaDevice,
+      mfaVerified: false
+    };
+
+    const sessionResult = await this.provider.createNewSession(user.id, sessionPayload);
+
     return {
-      user: loginResult.user,
+      user: user,
       tenant: activeTenantDetails,
       availableTenants: availableTenantsDetails,
-      accessToken: loginResult.tokens.accessToken,
-      refreshToken: loginResult.tokens.refreshToken,
+      accessToken: sessionResult.tokens.accessToken,
+      refreshToken: sessionResult.tokens.refreshToken,
       permissions: initialPermissions,
       requiresPasswordChange: false,
       requiresMfa: isMfaRequiredByPolicy || hasMfaDevice,
@@ -88,14 +93,22 @@ export class AuthService {
   }
 
   async register(email: string, password: string, context: IAuthContext): Promise<AuthServiceResponse> {
-    const result = await this.provider.register(email, password, context);
+    const user = await this.provider.createUser(email, password);
+
+    const sessionPayload = {
+      mfaEnforced: false,
+      mfaEnabled: false,
+      mfaVerified: false
+    };
+
+    const sessionResult = await this.provider.createNewSession(user.id, sessionPayload);
 
     return {
-      user: result.user,
+      user: user,
       tenant: null,
       availableTenants: [],
-      accessToken: result.tokens.accessToken,
-      refreshToken: result.tokens.refreshToken,
+      accessToken: sessionResult.tokens.accessToken,
+      refreshToken: sessionResult.tokens.refreshToken,
       permissions: null,
       requiresPasswordChange: false,
       requiresMfa: false,
@@ -251,8 +264,7 @@ export class AuthService {
       return true;
     } else {
       const tempPassword = crypto.randomBytes(8).toString('hex') + 'A1!';
-      const registerResult = await this.provider.register(email, tempPassword);
-      const newUser = registerResult.user;
+      const newUser = await this.provider.createUser(email, tempPassword);
 
       await this.provider.associateUserToTenant(newUser.id, tenantId);
 

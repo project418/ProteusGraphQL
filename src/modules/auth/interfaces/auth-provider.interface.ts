@@ -1,8 +1,6 @@
 import {
   AuthUser,
   AuthTokens,
-  LoginResponse,
-  RegisterResponse,
   TotpDevice,
   MfaVerificationResult,
   UserPaginationResult,
@@ -15,9 +13,11 @@ export interface IAuthProvider {
    * Note: context parameter is optional (type any), required for providers
    * like SuperTokens that need req/res objects.
    */
-  login(email: string, password: string, context?: any): Promise<LoginResponse>;
+  verifyCredentials(email: string, password: string): Promise<AuthUser>;
 
-  register(email: string, password: string, context?: any): Promise<RegisterResponse>;
+  createUser(email: string, password: string): Promise<AuthUser>;
+
+  createNewSession(userId: string, payload: any): Promise<{ tokens: AuthTokens; sessionHandle: string }>;
 
   refreshToken(refreshToken: string, context?: any): Promise<AuthTokens>;
 
