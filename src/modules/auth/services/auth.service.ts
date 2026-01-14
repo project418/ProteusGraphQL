@@ -96,8 +96,14 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string, context: IAuthContext): Promise<AuthServiceResponse> {
+  async register(email: string, password: string, firstName: string, lastName: string, context: IAuthContext): Promise<AuthServiceResponse> {
     const createdUser = await this.provider.createUser(email, password);
+
+    await this.provider.updateUser(createdUser.id, {
+      firstName,
+      lastName
+    });
+    
     const userProfile = await this.provider.getUser(createdUser.id);
     const user = { ...createdUser, ...userProfile };
 
@@ -149,7 +155,7 @@ export class AuthService {
     const token = await this.provider.createPasswordResetToken(user.id);
 
     if (token) {
-      const resetLink = `http://localhost:3000/auth/reset-password?token=${token}`;
+      const resetLink = `http://localhost:5173/auth/reset-password?token=${token}`;
       console.log('\n========================================');
       console.log('📧 PASSWORD RESET LINK:', resetLink);
       console.log('========================================\n');

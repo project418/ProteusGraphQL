@@ -75,7 +75,7 @@ const resolvers = {
     },
 
     register: async (_parent: any, args: any, ctx: MyContext) => {
-      return await ctx.authService.register(args.email, args.password, ctx);
+      return await ctx.authService.register(args.email, args.password, args.firstName, args.lastName, ctx);
     },
 
     refreshToken: async (_parent: any, args: any, ctx: MyContext) => {

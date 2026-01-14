@@ -119,7 +119,7 @@ const typeDefs = `#graphql
   type AuthMutations {
     # -- Authentication
     login(email: String!, password: String!): AuthResponse
-    register(email: String!, password: String!): AuthResponse
+    register(email: String!, password: String!, firstName: String!, lastName: String!): AuthResponse
     refreshToken(refreshToken: String!): RefreshResponse
     logout: Boolean
 
