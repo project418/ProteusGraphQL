@@ -24,7 +24,9 @@ export class AuthService {
    * Login Operation: Logs in with Auth Provider, then collects Tenant and Authorization information.
    */
   async login(email: string, password: string, context: IAuthContext): Promise<AuthServiceResponse> {
-    const user = await this.provider.verifyCredentials(email, password);
+    const credentialsUser = await this.provider.verifyCredentials(email, password);
+    const userProfile = await this.provider.getUser(credentialsUser.id);
+    const user = { ...credentialsUser, ...userProfile };
 
     const rawTenantIds = user.tenantIds || [];
     const tenantIds = rawTenantIds.filter((id) => id !== 'public');
@@ -95,7 +97,9 @@ export class AuthService {
   }
 
   async register(email: string, password: string, context: IAuthContext): Promise<AuthServiceResponse> {
-    const user = await this.provider.createUser(email, password);
+    const createdUser = await this.provider.createUser(email, password);
+    const userProfile = await this.provider.getUser(createdUser.id);
+    const user = { ...createdUser, ...userProfile };
 
     const sessionPayload = {
       mfaEnforced: false,

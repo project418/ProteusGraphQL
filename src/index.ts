@@ -79,7 +79,7 @@ const startServer = async () => {
 
   app.use(
     '/graphql',
-    bodyParser.json({ limit: '10mb' }),
+    bodyParser.json({ limit: '15mb' }),
     verifySession({ sessionRequired: false }),
 
     expressMiddleware(server, {
