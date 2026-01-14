@@ -75,7 +75,7 @@ export class AuthService {
     const sessionPayload = {
       mfaEnforced: isMfaRequiredByPolicy,
       mfaEnabled: hasMfaDevice,
-      mfaVerified: false
+      mfaVerified: false,
     };
 
     const sessionResult = await this.provider.createNewSession(user.id, sessionPayload);
@@ -90,7 +90,7 @@ export class AuthService {
       requiresPasswordChange: false,
       requiresMfa: isMfaRequiredByPolicy || hasMfaDevice,
       mfaEnforced: isMfaRequiredByPolicy,
-      mfaEnabled: hasMfaDevice
+      mfaEnabled: hasMfaDevice,
     };
   }
 
@@ -100,7 +100,7 @@ export class AuthService {
     const sessionPayload = {
       mfaEnforced: false,
       mfaEnabled: false,
-      mfaVerified: false
+      mfaVerified: false,
     };
 
     const sessionResult = await this.provider.createNewSession(user.id, sessionPayload);
@@ -115,7 +115,7 @@ export class AuthService {
       requiresPasswordChange: false,
       requiresMfa: false,
       mfaEnforced: false,
-      mfaEnabled: false
+      mfaEnabled: false,
     };
   }
 
@@ -200,12 +200,17 @@ export class AuthService {
     return await this.provider.createTotpDevice(userId, deviceName);
   }
 
-  async verifyTotpDevice(userId: string, deviceName: string, totp: string, context: IAuthContext): Promise<MfaVerificationResult> {
+  async verifyTotpDevice(
+    userId: string,
+    deviceName: string,
+    totp: string,
+    context: IAuthContext,
+  ): Promise<MfaVerificationResult> {
     const result = await this.provider.verifyTotpDevice(userId, deviceName, totp);
 
     if (result.verified && context.session) {
       const currentPayload = context.session.getAccessTokenPayload();
-      const newPayload = { 
+      const newPayload = {
         ...currentPayload,
         mfaEnabled: true,
         mfaVerified: true,
@@ -218,7 +223,7 @@ export class AuthService {
       return {
         verified: true,
         accessToken: sessionResult.tokens.accessToken,
-        refreshToken: sessionResult.tokens.refreshToken
+        refreshToken: sessionResult.tokens.refreshToken,
       };
     }
 
@@ -230,9 +235,9 @@ export class AuthService {
 
     if (result.verified && context.session) {
       const currentPayload = context.session.getAccessTokenPayload();
-      const newPayload = { 
-        ...currentPayload, 
-        mfaVerified: true 
+      const newPayload = {
+        ...currentPayload,
+        mfaVerified: true,
       };
 
       const sessionResult = await this.provider.createNewSession(userId, newPayload);
@@ -242,7 +247,7 @@ export class AuthService {
       return {
         verified: true,
         accessToken: sessionResult.tokens.accessToken,
-        refreshToken: sessionResult.tokens.refreshToken
+        refreshToken: sessionResult.tokens.refreshToken,
       };
     }
 
@@ -340,7 +345,10 @@ export class AuthService {
     return newTenant;
   }
 
-  async updateUser(userId: string, input: { email?: string; password?: string }): Promise<AuthUser> {
+  async updateUser(
+    userId: string,
+    input: { email?: string; password?: string; currentPassword?: string },
+  ): Promise<AuthUser> {
     return await this.provider.updateUser(userId, input);
   }
 }

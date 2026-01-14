@@ -1,10 +1,4 @@
-import {
-  AuthUser,
-  AuthTokens,
-  TotpDevice,
-  MfaVerificationResult,
-  UserPaginationResult,
-} from './auth-types';
+import { AuthUser, AuthTokens, TotpDevice, MfaVerificationResult, UserPaginationResult } from './auth-types';
 import { RolePolicy, InviteInfo } from './rbac.interface';
 
 export interface IAuthProvider {
@@ -30,7 +24,20 @@ export interface IAuthProvider {
 
   getUserByEmail(email: string): Promise<AuthUser | null>;
 
-  updateUser(userId: string, data: { email?: string; password?: string }): Promise<AuthUser>;
+  updateUser(
+    userId: string,
+    data: {
+      email?: string;
+      password?: string;
+      currentPassword?: string;
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      countryCode?: string;
+      timezone?: string;
+      language?: string;
+    },
+  ): Promise<AuthUser>;
 
   /**
    * Password Reset Flow

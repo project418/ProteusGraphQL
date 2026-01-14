@@ -6,6 +6,14 @@ const typeDefs = `#graphql
     id: ID!
     email: String!
     timeJoined: Float
+    firstName: String
+    lastName: String
+    title: String
+    phone: String
+    countryCode: String
+    timezone: String
+    language: String
+    avatar: String
   }
 
   type Tenant {
@@ -53,6 +61,11 @@ const typeDefs = `#graphql
     refreshToken: String
   }
 
+  type RegisteredDevice {
+    name: String!
+    verified: Boolean!
+  }
+
   # ---------------------------------------------------------
   # --- Policy / RBAC Types
   # ---------------------------------------------------------
@@ -68,19 +81,20 @@ const typeDefs = `#graphql
   }
 
   # ---------------------------------------------------------
-  # --- MFA Types
-  # ---------------------------------------------------------
-  type RegisteredDevice {
-    name: String!
-    verified: Boolean!
-  }
-
-  # ---------------------------------------------------------
   # --- Inputs
   # ---------------------------------------------------------
   input UpdateUserInput {
     email: String
     password: String
+    currentPassword: String
+    firstName: String
+    lastName: String
+    title: String
+    phone: String
+    countryCode: String
+    timezone: String
+    language: String
+    avatar: String
   }
 
   # ---------------------------------------------------------
@@ -109,6 +123,7 @@ const typeDefs = `#graphql
     refreshToken(refreshToken: String!): RefreshResponse
     logout: Boolean
 
+    # -- MFA Operations
     createTotpDevice(deviceName: String!): TotpDeviceResponse
     verifyTotpDevice(deviceName: String!, totp: String!): TotpVerifyResponse
     verifyMfa(totp: String!): TotpVerifyResponse
@@ -120,7 +135,6 @@ const typeDefs = `#graphql
     
     # -- Tenant Management
     createOwnTenant(name: String!): Tenant
-    
     
     # -- Self Service
     updateMe(input: UpdateUserInput!): User

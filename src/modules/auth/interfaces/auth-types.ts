@@ -3,6 +3,25 @@ export interface AuthUser {
   email: string;
   timeJoined: number;
   tenantIds?: string[];
+  firstName?: string;
+  lastName?: string;
+  title?: string;
+  phone?: string;
+  countryCode?: string;
+  timezone?: string;
+  language?: string;
+  avatar?: string;
+}
+
+export interface UserProfile {
+  firstName?: string;
+  lastName?: string;
+  title?: string;
+  phone?: string;
+  countryCode?: string;
+  timezone?: string;
+  language?: string;
+  avatar?: string;
 }
 
 export interface AuthTokens {

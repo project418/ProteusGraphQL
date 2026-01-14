@@ -10,11 +10,10 @@ import { IAuthProvider } from '../interfaces/auth-provider.interface';
 import {
   AuthUser,
   AuthTokens,
-  LoginResponse,
-  RegisterResponse,
   TotpDevice,
   MfaVerificationResult,
   UserPaginationResult,
+  UserProfile,
 } from '../interfaces/auth-types';
 import { RolePolicy, InviteInfo, UserMetadataStructure } from '../interfaces/rbac.interface';
 
@@ -54,7 +53,7 @@ export class SuperTokensProvider implements IAuthProvider {
     }
 
     const user = response.user;
-    
+
     return {
       id: user.id,
       email: user.emails[0],
@@ -64,7 +63,7 @@ export class SuperTokensProvider implements IAuthProvider {
 
   async createNewSession(userId: string, payload: any): Promise<{ tokens: AuthTokens; sessionHandle: string }> {
     const recipeUserId = new SuperTokens.RecipeUserId(userId);
-    
+
     try {
       const session = await Session.createNewSessionWithoutRequestResponse('public', recipeUserId, payload);
       const tokens = session.getAllSessionTokensDangerously();
@@ -85,24 +84,24 @@ export class SuperTokensProvider implements IAuthProvider {
 
   async refreshToken(refreshToken: string, context?: any): Promise<AuthTokens> {
     try {
-      const result = await Session.refreshSessionWithoutRequestResponse(refreshToken)
+      const result = await Session.refreshSessionWithoutRequestResponse(refreshToken);
       const sessionData = result.getAllSessionTokensDangerously();
 
       return {
         accessToken: sessionData.accessToken,
         refreshToken: sessionData.refreshToken || '',
-      }
+      };
     } catch (err: any) {
       if (err.type === Session.Error.TRY_REFRESH_TOKEN) {
-         throw new GraphQLError('Session invalid, please login again.', {
-            extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } },
-         });
+        throw new GraphQLError('Session invalid, please login again.', {
+          extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } },
+        });
       }
-      
+
       if (err.type === Session.Error.TOKEN_THEFT_DETECTED) {
-         throw new GraphQLError('Token theft detected, session revoked.', {
-            extensions: { code: 'TOKEN_THEFT', http: { status: 401 } },
-         });
+        throw new GraphQLError('Token theft detected, session revoked.', {
+          extensions: { code: 'TOKEN_THEFT', http: { status: 401 } },
+        });
       }
 
       throw new GraphQLError('Session refresh failed.', {
@@ -125,11 +124,23 @@ export class SuperTokensProvider implements IAuthProvider {
   async getUser(userId: string): Promise<AuthUser | null> {
     const user = await SuperTokens.getUser(userId);
     if (!user) return null;
+
+    const { metadata } = await UserMetadata.getUserMetadata(userId);
+    const profile = (metadata.profile as UserProfile) || {};
+
     return {
       id: user.id,
       email: user.emails[0],
       timeJoined: user.timeJoined,
       tenantIds: user.tenantIds,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      title: profile.title,
+      phone: profile.phone,
+      countryCode: profile.countryCode,
+      timezone: profile.timezone,
+      language: profile.language,
+      avatar: profile.avatar,
     };
   }
 
@@ -137,32 +148,97 @@ export class SuperTokensProvider implements IAuthProvider {
     const users = await SuperTokens.listUsersByAccountInfo('public', { email });
     if (users.length === 0) return null;
     const user = users[0];
+
+    const { metadata } = await UserMetadata.getUserMetadata(user.id);
+    const profile = (metadata.profile as UserProfile) || {};
+
     return {
       id: user.id,
       email: user.emails[0],
       timeJoined: user.timeJoined,
       tenantIds: user.tenantIds,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      title: profile.title,
+      phone: profile.phone,
+      countryCode: profile.countryCode,
+      timezone: profile.timezone,
+      language: profile.language,
+      avatar: profile.avatar,
     };
   }
 
-  async updateUser(userId: string, data: { email?: string; password?: string }): Promise<AuthUser> {
-    const recipeUserId = new SuperTokens.RecipeUserId(userId);
+  async updateUser(
+    userId: string,
+    data: {
+      email?: string;
+      password?: string;
+      currentPassword?: string;
+      firstName?: string;
+      lastName?: string;
+      title?: string;
+      phone?: string;
+      countryCode?: string;
+      timezone?: string;
+      language?: string;
+      avatar?: string;
+    },
+  ): Promise<AuthUser> {
+    if (data.password) {
+      if (!data.currentPassword) {
+        throw new GraphQLError('Current password is required to set a new password.', {
+          extensions: { code: 'BAD_REQUEST' },
+        });
+      }
 
-    const response = await EmailPassword.updateEmailOrPassword({
-      recipeUserId,
-      email: data.email,
-      password: data.password,
-    });
+      const user = await this.getUser(userId);
+      if (!user) throw new GraphQLError('User not found.');
 
-    if (response.status === 'EMAIL_ALREADY_EXISTS_ERROR') {
-      throw new GraphQLError('Email already exists.', {
-        extensions: { code: 'EMAIL_ALREADY_EXISTS' },
+      try {
+        await this.verifyCredentials(user.email, data.currentPassword);
+      } catch (e) {
+        throw new GraphQLError('Invalid current password.', {
+          extensions: { code: 'INVALID_PASSWORD' },
+        });
+      }
+
+      const recipeUserId = new SuperTokens.RecipeUserId(userId);
+      await EmailPassword.updateEmailOrPassword({
+        recipeUserId,
+        password: data.password,
       });
-    } else if (response.status === 'UNKNOWN_USER_ID_ERROR') {
-      throw new GraphQLError('User not found.', { extensions: { code: 'USER_NOT_FOUND' } });
     }
 
-    // Fetch and return current user
+    if (data.email) {
+      const recipeUserId = new SuperTokens.RecipeUserId(userId);
+      const response = await EmailPassword.updateEmailOrPassword({
+        recipeUserId,
+        email: data.email,
+      });
+      if (response.status === 'EMAIL_ALREADY_EXISTS_ERROR') {
+        throw new GraphQLError('Email already exists.', { extensions: { code: 'EMAIL_ALREADY_EXISTS' } });
+      }
+    }
+
+    const profileUpdates: Partial<UserProfile> = {};
+    if (data.firstName !== undefined) profileUpdates.firstName = data.firstName;
+    if (data.lastName !== undefined) profileUpdates.lastName = data.lastName;
+    if (data.title !== undefined) profileUpdates.title = data.title;
+    if (data.phone !== undefined) profileUpdates.phone = data.phone;
+    if (data.countryCode !== undefined) profileUpdates.countryCode = data.countryCode;
+    if (data.timezone !== undefined) profileUpdates.timezone = data.timezone;
+    if (data.language !== undefined) profileUpdates.language = data.language;
+    if (data.avatar !== undefined) profileUpdates.avatar = data.avatar;
+
+    if (Object.keys(profileUpdates).length > 0) {
+      const { metadata } = await UserMetadata.getUserMetadata(userId);
+      const currentProfile = (metadata.profile as UserProfile) || {};
+
+      await UserMetadata.updateUserMetadata(userId, {
+        profile: { ...currentProfile, ...profileUpdates },
+      });
+    }
+
     return (await this.getUser(userId))!;
   }
 
@@ -217,7 +293,7 @@ export class SuperTokensProvider implements IAuthProvider {
     if (response.status === 'INVALID_TOTP_ERROR') {
       throw new GraphQLError('Invalid code.');
     }
-    
+
     return { verified: true };
   }
 

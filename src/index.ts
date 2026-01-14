@@ -69,7 +69,7 @@ const startServer = async () => {
 
   app.use(
     cors({
-      origin: 'http://localhost:5173',
+      origin: ['http://localhost:5173', 'https://localhost:4000'],
       allowedHeaders: ['content-type', ...SuperTokens.getAllCORSHeaders(), 'x-tenant-id'],
       credentials: true,
     }),
@@ -79,7 +79,7 @@ const startServer = async () => {
 
   app.use(
     '/graphql',
-    bodyParser.json(),
+    bodyParser.json({ limit: '10mb' }),
     verifySession({ sessionRequired: false }),
 
     expressMiddleware(server, {
