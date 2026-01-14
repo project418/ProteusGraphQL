@@ -69,7 +69,7 @@ const startServer = async () => {
 
   app.use(
     cors({
-      origin: 'http://localhost:3000',
+      origin: 'http://localhost:5173',
       allowedHeaders: ['content-type', ...SuperTokens.getAllCORSHeaders(), 'x-tenant-id'],
       credentials: true,
     }),

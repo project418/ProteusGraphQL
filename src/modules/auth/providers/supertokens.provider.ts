@@ -202,7 +202,7 @@ export class SuperTokensProvider implements IAuthProvider {
     }
 
     return {
-      name: response.deviceName,
+      deviceName: response.deviceName,
       secret: response.secret,
       qrCode: response.qrCodeString,
     };

@@ -25,7 +25,7 @@ export interface RegisterResponse {
 }
 
 export interface TotpDevice {
-  name: string;
+  deviceName: string;
   secret: string;
   qrCode: string;
 }
@@ -50,4 +50,6 @@ export interface AuthServiceResponse {
   permissions: any;
   requiresPasswordChange: boolean;
   requiresMfa: boolean;
+  mfaEnforced: boolean;
+  mfaEnabled: boolean;
 }

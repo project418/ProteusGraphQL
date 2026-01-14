@@ -60,6 +60,12 @@ const resolvers = {
 
       return await ctx.authService.getRolePolicy(ctx.tenantId, args.roleName);
     }),
+
+    // --- MFA Management
+    listTotpDevices: protect(async (_parent: any, _args: any, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId();
+      return await ctx.authService.listTotpDevices(userId);
+    }),
   },
 
   AuthMutations: {

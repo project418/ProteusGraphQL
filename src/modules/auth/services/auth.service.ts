@@ -70,7 +70,7 @@ export class AuthService {
     }
 
     const devices = await this.provider.listTotpDevices(user.id);
-    const hasMfaDevice = devices.length > 0;
+    const hasMfaDevice = devices.some((d: any) => d.verified === true);
 
     const sessionPayload = {
       mfaEnforced: isMfaRequiredByPolicy,
@@ -89,6 +89,8 @@ export class AuthService {
       permissions: initialPermissions,
       requiresPasswordChange: false,
       requiresMfa: isMfaRequiredByPolicy || hasMfaDevice,
+      mfaEnforced: isMfaRequiredByPolicy,
+      mfaEnabled: hasMfaDevice
     };
   }
 
@@ -112,6 +114,8 @@ export class AuthService {
       permissions: null,
       requiresPasswordChange: false,
       requiresMfa: false,
+      mfaEnforced: false,
+      mfaEnabled: false
     };
   }
 
@@ -258,6 +262,10 @@ export class AuthService {
       });
     }
     return true;
+  }
+
+  async listTotpDevices(userId: string): Promise<{ name: string }[]> {
+    return await this.provider.listTotpDevices(userId);
   }
 
   // --- User Invitation and Management ---

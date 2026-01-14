@@ -27,6 +27,8 @@ const typeDefs = `#graphql
     permissions: JSON
     requiresPasswordChange: Boolean
     requiresMfa: Boolean
+    mfaEnforced: Boolean
+    mfaEnabled: Boolean
   }
 
   type RefreshResponse {
@@ -66,6 +68,14 @@ const typeDefs = `#graphql
   }
 
   # ---------------------------------------------------------
+  # --- MFA Types
+  # ---------------------------------------------------------
+  type RegisteredDevice {
+    name: String!
+    verified: Boolean!
+  }
+
+  # ---------------------------------------------------------
   # --- Inputs
   # ---------------------------------------------------------
   input UpdateUserInput {
@@ -87,6 +97,9 @@ const typeDefs = `#graphql
     # -- Policy Management
     listPolicies: [RoleDefinition]
     getPolicy(roleName: String!): RolePolicy
+
+    # -- MFA Management
+    listTotpDevices: [RegisteredDevice]
   }
 
   type AuthMutations {

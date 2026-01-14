@@ -16,7 +16,7 @@ export const initSuperTokens = () => {
     appInfo: {
       appName: 'ProteusApp',
       apiDomain: 'http://localhost:4000',
-      websiteDomain: 'http://localhost:3000',
+      websiteDomain: 'http://localhost:5173',
       apiBasePath: '/auth',
       websiteBasePath: '/auth',
     },
