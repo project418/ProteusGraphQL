@@ -48,6 +48,7 @@ const typeDefs = `#graphql
   type TotpVerifyResponse {
     verified: Boolean!
     accessToken: String
+    refreshToken: String
   }
 
   # ---------------------------------------------------------

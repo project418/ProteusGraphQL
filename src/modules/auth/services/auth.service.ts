@@ -196,21 +196,26 @@ export class AuthService {
     return await this.provider.createTotpDevice(userId, deviceName);
   }
 
-  async verifyTotpDevice(
-    userId: string,
-    deviceName: string,
-    totp: string,
-    context: IAuthContext,
-  ): Promise<MfaVerificationResult> {
+  async verifyTotpDevice(userId: string, deviceName: string, totp: string, context: IAuthContext): Promise<MfaVerificationResult> {
     const result = await this.provider.verifyTotpDevice(userId, deviceName, totp);
 
     if (result.verified && context.session) {
-      await context.session.mergeIntoAccessTokenPayload({
+      const currentPayload = context.session.getAccessTokenPayload();
+      const newPayload = { 
+        ...currentPayload,
         mfaEnabled: true,
         mfaVerified: true,
-      });
+      };
 
-      result.accessToken = await context.session.getAccessToken();
+      const sessionResult = await this.provider.createNewSession(userId, newPayload);
+
+      await context.session.revoke();
+
+      return {
+        verified: true,
+        accessToken: sessionResult.tokens.accessToken,
+        refreshToken: sessionResult.tokens.refreshToken
+      };
     }
 
     return result;
@@ -220,9 +225,21 @@ export class AuthService {
     const result = await this.provider.verifyMfaCode(userId, totp);
 
     if (result.verified && context.session) {
-      await context.session.mergeIntoAccessTokenPayload({ mfaVerified: true });
+      const currentPayload = context.session.getAccessTokenPayload();
+      const newPayload = { 
+        ...currentPayload, 
+        mfaVerified: true 
+      };
 
-      result.accessToken = await context.session.getAccessToken();
+      const sessionResult = await this.provider.createNewSession(userId, newPayload);
+
+      await context.session.revoke();
+
+      return {
+        verified: true,
+        accessToken: sessionResult.tokens.accessToken,
+        refreshToken: sessionResult.tokens.refreshToken
+      };
     }
 
     return result;

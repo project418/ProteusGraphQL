@@ -38,6 +38,7 @@ export interface UserPaginationResult {
 export interface MfaVerificationResult {
   verified: boolean;
   accessToken?: string;
+  refreshToken?: string;
 }
 
 export interface AuthServiceResponse {
