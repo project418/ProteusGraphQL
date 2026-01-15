@@ -62,10 +62,12 @@ export interface IAuthProvider {
   /**
    * Multi-tenancy Management
    */
+  createProviderTenant(tenantId: string): Promise<void>; 
+
   associateUserToTenant(userId: string, tenantId: string): Promise<void>;
 
   disassociateUserFromTenant(userId: string, tenantId: string): Promise<void>;
-
+  
   getTenantUsers(tenantId: string, limit?: number, paginationToken?: string): Promise<UserPaginationResult>;
 
   /**

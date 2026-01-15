@@ -103,7 +103,7 @@ export class AuthService {
       firstName,
       lastName
     });
-    
+
     const userProfile = await this.provider.getUser(createdUser.id);
     const user = { ...createdUser, ...userProfile };
 
@@ -337,6 +337,7 @@ export class AuthService {
     const newTenantId = newTenant.id;
 
     // 2. Associate user with tenant
+    await this.provider.createProviderTenant(newTenantId);
     await this.provider.associateUserToTenant(userId, newTenantId);
 
     // 3. Create and assign Admin policy

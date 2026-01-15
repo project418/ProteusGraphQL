@@ -317,6 +317,12 @@ export class SuperTokensProvider implements IAuthProvider {
 
   // --- 5. Multi-tenancy ---
 
+  async createProviderTenant(tenantId: string): Promise<void> {
+    await Multitenancy.createOrUpdateTenant(tenantId, {
+      firstFactors: ['emailpassword', 'thirdparty']
+    });
+  }
+
   async associateUserToTenant(userId: string, tenantId: string): Promise<void> {
     const recipeUserId = new SuperTokens.RecipeUserId(userId);
     await Multitenancy.associateUserToTenant(tenantId, recipeUserId);
