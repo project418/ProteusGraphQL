@@ -334,18 +334,37 @@ export class SuperTokensProvider implements IAuthProvider {
   }
 
   async getTenantUsers(tenantId: string, limit: number = 10, paginationToken?: string): Promise<UserPaginationResult> {
+    const token = paginationToken ? paginationToken : undefined;
+
     const response = await SuperTokens.getUsersNewestFirst({
       tenantId,
       limit,
-      paginationToken,
+      paginationToken: token,
     });
 
+    const usersWithProfile = await Promise.all(
+      response.users.map(async (u) => {
+        const { metadata } = await UserMetadata.getUserMetadata(u.id);
+        const profile = (metadata.profile as UserProfile) || {};
+
+        return {
+          id: u.id,
+          email: u.emails[0],
+          timeJoined: u.timeJoined,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          title: profile.title,
+          phone: profile.phone,
+          countryCode: profile.countryCode,
+          timezone: profile.timezone,
+          language: profile.language,
+          avatar: profile.avatar,
+        };
+      }),
+    );
+
     return {
-      users: response.users.map((u) => ({
-        id: u.id,
-        email: u.emails[0],
-        timeJoined: u.timeJoined,
-      })),
+      users: usersWithProfile,
       nextPaginationToken: response.nextPaginationToken,
     };
   }
@@ -386,8 +405,7 @@ export class SuperTokensProvider implements IAuthProvider {
     }
 
     const updatedTenants = { ...userMeta.tenants };
-    // @ts-ignore
-    updatedTenants[tenantId] = null; // Set to null to delete
+    delete updatedTenants[tenantId];
 
     await UserMetadata.updateUserMetadata(userId, {
       tenants: updatedTenants,
@@ -497,5 +515,23 @@ export class SuperTokensProvider implements IAuthProvider {
     });
 
     return inviteData;
+  }
+
+  // --- Password Change Requirement
+  
+  async getPasswordChangeRequirement(userId: string): Promise<boolean> {
+    try {
+      const { metadata } = await UserMetadata.getUserMetadata(userId);
+      const userMeta = metadata as any;
+      return userMeta.requires_password_change === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async setPasswordChangeRequirement(userId: string, required: boolean): Promise<void> {
+    await UserMetadata.updateUserMetadata(userId, {
+      requires_password_change: required,
+    });
   }
 }

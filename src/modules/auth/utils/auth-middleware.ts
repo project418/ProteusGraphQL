@@ -6,13 +6,14 @@ type ResolverFn = (parent: any, args: any, context: MyContext, info: any) => any
 interface ProtectOptions {
   requireMfaVerification?: boolean;
   allowMfaSetup?: boolean;
+  allowPasswordChange?: boolean;
 }
 
 const GLOBAL_MFA_ENFORCED = false;
 
 export const protect = (
   resolver: ResolverFn,
-  options: ProtectOptions = { requireMfaVerification: true, allowMfaSetup: false },
+  options: ProtectOptions = { requireMfaVerification: true, allowMfaSetup: false, allowPasswordChange: false },
 ): ResolverFn => {
   return async (parent, args, context, info) => {
     if (!context.session) {
@@ -26,6 +27,16 @@ export const protect = (
 
     const payload = context.session.getAccessTokenPayload();
 
+    // Check for password change requirement
+    const requiresPasswordChange = payload.requiresPasswordChange === true;
+
+    if (requiresPasswordChange && !options.allowPasswordChange) {
+      throw new GraphQLError('Password change required. Please update your password.', {
+        extensions: { code: 'PASSWORD_CHANGE_REQUIRED', http: { status: 403 } },
+      });
+    }
+
+    // Check for MFA enforcement and verification
     const mfaEnforced = payload.mfaEnforced === true || GLOBAL_MFA_ENFORCED;
     const hasMfaDevice = payload.mfaEnabled === true;
     const isMfaVerified = payload.mfaVerified === true;

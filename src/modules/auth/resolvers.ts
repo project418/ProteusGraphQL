@@ -23,6 +23,11 @@ const resolvers = {
       return ctx.currentPermissions || null;
     },
 
+    myTenants: protect(async (_parent: any, _args: any, ctx: MyContext) => {
+      const userId = ctx.session!.getUserId();
+      return await ctx.authService.getTenants(userId, ctx);
+    }),
+
     // User Management
     tenantUsers: protect(async (_parent: any, args: { limit?: number; paginationToken?: string }, ctx: MyContext) => {
       if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
@@ -88,7 +93,7 @@ const resolvers = {
       await ctx.session!.revoke();
 
       return true;
-    }),
+    }, { requireMfaVerification: false, allowPasswordChange: false }),
 
     // MFA Operations
     createTotpDevice: protect(
@@ -135,11 +140,22 @@ const resolvers = {
       return await ctx.authService.createOwnTenant(userId, args.name, ctx);
     }),
 
+    // Tenant Update
+    updateTenant: protect(async (_parent: any, args: { name: string }, ctx: MyContext) => {
+      if (!ctx.tenantId) {
+        throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
+      }
+      
+      checkEntityAccess(ctx, 'system_iam', 'update');
+
+      return await ctx.authService.updateTenant(args.name, ctx);
+    }),
+
     // Self Service
     updateMe: protect(async (_parent: any, args: { input: { email?: string; password?: string } }, ctx: MyContext) => {
       const userId = ctx.session!.getUserId();
       return await ctx.authService.updateUser(userId, args.input);
-    }),
+    }, { allowPasswordChange: true }),
 
     // User Management
     inviteUser: protect(async (_parent: any, args: { email: string; roleName: string }, ctx: MyContext) => {

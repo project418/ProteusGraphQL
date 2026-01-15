@@ -11,7 +11,6 @@ import {
 } from '../interfaces/auth-types';
 import { IAuthContext } from '../interfaces/auth-context.interface';
 import { RolePolicy } from '../interfaces/rbac.interface';
-import { tenantClient } from '../../../clients/proteus.client';
 import { TenantService } from '../../tenant/services/tenant.service';
 
 export class AuthService {
@@ -71,6 +70,8 @@ export class AuthService {
       }
     }
 
+    const requiresPasswordChange = await this.provider.getPasswordChangeRequirement(user.id);
+
     const devices = await this.provider.listTotpDevices(user.id);
     const hasMfaDevice = devices.some((d: any) => d.verified === true);
 
@@ -78,6 +79,7 @@ export class AuthService {
       mfaEnforced: isMfaRequiredByPolicy,
       mfaEnabled: hasMfaDevice,
       mfaVerified: false,
+      requiresPasswordChange: requiresPasswordChange,
     };
 
     const sessionResult = await this.provider.createNewSession(user.id, sessionPayload);
@@ -89,7 +91,7 @@ export class AuthService {
       accessToken: sessionResult.tokens.accessToken,
       refreshToken: sessionResult.tokens.refreshToken,
       permissions: initialPermissions,
-      requiresPasswordChange: false,
+      requiresPasswordChange: requiresPasswordChange,
       requiresMfa: isMfaRequiredByPolicy || hasMfaDevice,
       mfaEnforced: isMfaRequiredByPolicy,
       mfaEnabled: hasMfaDevice,
@@ -111,6 +113,7 @@ export class AuthService {
       mfaEnforced: false,
       mfaEnabled: false,
       mfaVerified: false,
+      requiresPasswordChange: false,
     };
 
     const sessionResult = await this.provider.createNewSession(user.id, sessionPayload);
@@ -142,6 +145,28 @@ export class AuthService {
 
   async getUser(userId: string): Promise<AuthUser | null> {
     return await this.provider.getUser(userId);
+  }
+
+  async getTenants(userId: string, context: IAuthContext): Promise<any[]> {
+    const user = await this.provider.getUser(userId);
+    if (!user || !user.tenantIds) return [];
+
+    const tenantIds = user.tenantIds.filter((id) => id !== 'public');
+    const tenants = [];
+
+    for (const tId of tenantIds) {
+      try {
+        const tempCtx = { ...context, tenantId: tId } as any;
+        const tenant = await this.tenantService.getTenant(tId, tempCtx);
+        if (tenant) {
+          tenants.push(tenant);
+        }
+      } catch (error) {
+        console.warn(`Error fetching tenant ${tId}:`, error);
+      }
+    }
+
+    return tenants;
   }
 
   async getTenantUsers(tenantId: string, limit?: number, paginationToken?: string): Promise<UserPaginationResult> {
@@ -299,7 +324,7 @@ export class AuthService {
         createdAt: Date.now(),
       });
 
-      const inviteLink = `http://localhost:3000/auth/join-tenant?token=${inviteToken}`;
+      const inviteLink = `http://localhost:5173/auth/join-tenant?token=${inviteToken}`;
       console.log('📨 INVITE LINK:', inviteLink);
       return true;
     } else {
@@ -359,7 +384,28 @@ export class AuthService {
   async updateUser(
     userId: string,
     input: { email?: string; password?: string; currentPassword?: string },
+    context?: IAuthContext,
   ): Promise<AuthUser> {
-    return await this.provider.updateUser(userId, input);
+    const updatedUser = await this.provider.updateUser(userId, input);
+
+    if (input.password) {
+        await this.provider.setPasswordChangeRequirement(userId, false);
+
+        if (context && context.session) {
+            await context.session.mergeIntoAccessTokenPayload({
+                requiresPasswordChange: false
+            });
+        }
+    }
+    return updatedUser;
   }
+
+  async updateTenant(name: string, context: IAuthContext): Promise<any> {
+    if (!context.tenantId) {
+      throw new GraphQLError('Tenant ID header is required.');
+    }
+    
+    return await this.tenantService.updateTenant(context.tenantId, name, context as any);
+  }
+
 }

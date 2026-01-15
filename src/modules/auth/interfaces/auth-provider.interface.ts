@@ -67,7 +67,7 @@ export interface IAuthProvider {
   associateUserToTenant(userId: string, tenantId: string): Promise<void>;
 
   disassociateUserFromTenant(userId: string, tenantId: string): Promise<void>;
-  
+
   getTenantUsers(tenantId: string, limit?: number, paginationToken?: string): Promise<UserPaginationResult>;
 
   /**
@@ -110,4 +110,8 @@ export interface IAuthProvider {
   addPendingInvite(userId: string, token: string, invite: InviteInfo): Promise<void>;
 
   consumePendingInvite(userId: string, token: string): Promise<InviteInfo | null>;
+
+  getPasswordChangeRequirement(userId: string): Promise<boolean>;
+  
+  setPasswordChangeRequirement(userId: string, required: boolean): Promise<void>;
 }

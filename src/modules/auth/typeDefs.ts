@@ -104,6 +104,7 @@ const typeDefs = `#graphql
     # -- Self Service
     me: User
     myPermissions: JSON
+    myTenants: [Tenant]
 
     # -- User Management
     tenantUsers(limit: Int, paginationToken: String): TenantUsersResponse
@@ -135,6 +136,7 @@ const typeDefs = `#graphql
     
     # -- Tenant Management
     createOwnTenant(name: String!): Tenant
+    updateTenant(name: String!): Tenant
     
     # -- Self Service
     updateMe(input: UpdateUserInput!): User
