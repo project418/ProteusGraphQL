@@ -319,7 +319,7 @@ export class SuperTokensProvider implements IAuthProvider {
 
   async createProviderTenant(tenantId: string): Promise<void> {
     await Multitenancy.createOrUpdateTenant(tenantId, {
-      firstFactors: ['emailpassword', 'thirdparty']
+      firstFactors: ['emailpassword', 'thirdparty'],
     });
   }
 
@@ -518,7 +518,7 @@ export class SuperTokensProvider implements IAuthProvider {
   }
 
   // --- Password Change Requirement
-  
+
   async getPasswordChangeRequirement(userId: string): Promise<boolean> {
     try {
       const { metadata } = await UserMetadata.getUserMetadata(userId);

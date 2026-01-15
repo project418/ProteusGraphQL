@@ -8,6 +8,7 @@ import {
   MfaVerificationResult,
   UserPaginationResult,
   AuthTokens,
+  UpdateUserResult,
 } from '../interfaces/auth-types';
 import { IAuthContext } from '../interfaces/auth-context.interface';
 import { RolePolicy } from '../interfaces/rbac.interface';
@@ -98,12 +99,18 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string, firstName: string, lastName: string, context: IAuthContext): Promise<AuthServiceResponse> {
+  async register(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    context: IAuthContext,
+  ): Promise<AuthServiceResponse> {
     const createdUser = await this.provider.createUser(email, password);
 
     await this.provider.updateUser(createdUser.id, {
       firstName,
-      lastName
+      lastName,
     });
 
     const userProfile = await this.provider.getUser(createdUser.id);
@@ -331,6 +338,8 @@ export class AuthService {
       const tempPassword = crypto.randomBytes(8).toString('hex') + 'A1!';
       const newUser = await this.provider.createUser(email, tempPassword);
 
+      await this.provider.setPasswordChangeRequirement(newUser.id, true);
+
       await this.provider.associateUserToTenant(newUser.id, tenantId);
 
       // Provider instead of PolicyService
@@ -385,27 +394,49 @@ export class AuthService {
     userId: string,
     input: { email?: string; password?: string; currentPassword?: string },
     context?: IAuthContext,
-  ): Promise<AuthUser> {
+  ): Promise<UpdateUserResult> {
     const updatedUser = await this.provider.updateUser(userId, input);
+    let newTokens: any = {};
 
     if (input.password) {
-        await this.provider.setPasswordChangeRequirement(userId, false);
+      await this.provider.setPasswordChangeRequirement(userId, false);
 
-        if (context && context.session) {
-            await context.session.mergeIntoAccessTokenPayload({
-                requiresPasswordChange: false
-            });
-        }
+      let sessionPayload = {};
+      if (context && context.session) {
+        const currentPayload = context.session.getAccessTokenPayload();
+        sessionPayload = {
+          ...currentPayload,
+          requiresPasswordChange: false,
+        };
+      } else {
+        const devices = await this.provider.listTotpDevices(userId);
+        const hasMfaDevice = devices.length > 0;
+        sessionPayload = {
+          mfaEnforced: false,
+          mfaEnabled: hasMfaDevice,
+          mfaVerified: true,
+          requiresPasswordChange: false,
+        };
+      }
+
+      const sessionResult = await this.provider.createNewSession(userId, sessionPayload);
+      newTokens = {
+        accessToken: sessionResult.tokens.accessToken,
+        refreshToken: sessionResult.tokens.refreshToken,
+      };
     }
-    return updatedUser;
+
+    return {
+      user: updatedUser,
+      ...newTokens,
+    };
   }
 
   async updateTenant(name: string, context: IAuthContext): Promise<any> {
     if (!context.tenantId) {
       throw new GraphQLError('Tenant ID header is required.');
     }
-    
+
     return await this.tenantService.updateTenant(context.tenantId, name, context as any);
   }
-
 }

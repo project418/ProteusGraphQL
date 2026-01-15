@@ -67,10 +67,13 @@ const resolvers = {
     }),
 
     // --- MFA Management
-    listTotpDevices: protect(async (_parent: any, _args: any, ctx: MyContext) => {
-      const userId = ctx.session!.getUserId();
-      return await ctx.authService.listTotpDevices(userId);
-    }),
+    listTotpDevices: protect(
+      async (_parent: any, _args: any, ctx: MyContext) => {
+        const userId = ctx.session!.getUserId();
+        return await ctx.authService.listTotpDevices(userId);
+      },
+      { requireMfaVerification: true, allowPasswordChange: false },
+    ),
   },
 
   AuthMutations: {
@@ -87,13 +90,16 @@ const resolvers = {
       return await ctx.authService.refreshToken(args.refreshToken, ctx);
     },
 
-    logout: protect(async (_parent: any, _args: any, ctx: MyContext) => {
-      const userId = ctx.session!.getUserId();
-      await ctx.authService.logout(userId);
-      await ctx.session!.revoke();
+    logout: protect(
+      async (_parent: any, _args: any, ctx: MyContext) => {
+        const userId = ctx.session!.getUserId();
+        await ctx.authService.logout(userId);
+        await ctx.session!.revoke();
 
-      return true;
-    }, { requireMfaVerification: false, allowPasswordChange: false }),
+        return true;
+      },
+      { requireMfaVerification: false, allowPasswordChange: false },
+    ),
 
     // MFA Operations
     createTotpDevice: protect(
@@ -101,7 +107,7 @@ const resolvers = {
         const userId = ctx.session!.getUserId();
         return await ctx.authService.createTotpDevice(userId, args.deviceName);
       },
-      { allowMfaSetup: true },
+      { allowMfaSetup: true, allowPasswordChange: true },
     ),
 
     verifyTotpDevice: protect(
@@ -109,7 +115,7 @@ const resolvers = {
         const userId = ctx.session!.getUserId();
         return await ctx.authService.verifyTotpDevice(userId, args.deviceName, args.totp, ctx);
       },
-      { allowMfaSetup: true },
+      { allowMfaSetup: true, allowPasswordChange: true },
     ),
 
     verifyMfa: protect(
@@ -117,7 +123,7 @@ const resolvers = {
         const userId = ctx.session!.getUserId();
         return await ctx.authService.verifyMfa(userId, args.totp, ctx);
       },
-      { requireMfaVerification: false },
+      { requireMfaVerification: false, allowPasswordChange: true },
     ),
 
     removeTotpDevice: protect(async (_parent: any, args: { deviceName: string }, ctx: MyContext) => {
@@ -145,17 +151,20 @@ const resolvers = {
       if (!ctx.tenantId) {
         throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
       }
-      
+
       checkEntityAccess(ctx, 'system_iam', 'update');
 
       return await ctx.authService.updateTenant(args.name, ctx);
     }),
 
     // Self Service
-    updateMe: protect(async (_parent: any, args: { input: { email?: string; password?: string } }, ctx: MyContext) => {
-      const userId = ctx.session!.getUserId();
-      return await ctx.authService.updateUser(userId, args.input);
-    }, { allowPasswordChange: true }),
+    updateMe: protect(
+      async (_parent: any, args: { input: { email?: string; password?: string } }, ctx: MyContext) => {
+        const userId = ctx.session!.getUserId();
+        return await ctx.authService.updateUser(userId, args.input);
+      },
+      { allowPasswordChange: true },
+    ),
 
     // User Management
     inviteUser: protect(async (_parent: any, args: { email: string; roleName: string }, ctx: MyContext) => {
@@ -189,18 +198,6 @@ const resolvers = {
       await ctx.authService.removeUserFromTenant(args.userId, ctx.tenantId);
       return true;
     }),
-
-    updateUser: protect(
-      async (_parent: any, args: { userId: string; input: { email?: string; password?: string } }, ctx: MyContext) => {
-        if (!ctx.tenantId)
-          throw new GraphQLError('Tenant ID header is required.', {
-            extensions: { code: 'BAD_REQUEST' },
-          });
-        checkEntityAccess(ctx, 'system_iam', 'update');
-
-        return await ctx.authService.updateUser(args.userId, args.input);
-      },
-    ),
 
     // Policy Management
     createPolicy: protect(async (_parent: any, args: { roleName: string; policy: RolePolicy }, ctx: MyContext) => {

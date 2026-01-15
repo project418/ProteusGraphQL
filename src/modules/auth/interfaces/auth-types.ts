@@ -72,3 +72,9 @@ export interface AuthServiceResponse {
   mfaEnforced: boolean;
   mfaEnabled: boolean;
 }
+
+export interface UpdateUserResult {
+  user: AuthUser;
+  accessToken?: string;
+  refreshToken?: string;
+}

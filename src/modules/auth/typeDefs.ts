@@ -39,6 +39,12 @@ const typeDefs = `#graphql
     mfaEnabled: Boolean
   }
 
+  type UpdateUserResponse {
+    user: User!
+    accessToken: String
+    refreshToken: String
+  }
+
   type RefreshResponse {
     accessToken: String!
     refreshToken: String!
@@ -139,14 +145,13 @@ const typeDefs = `#graphql
     updateTenant(name: String!): Tenant
     
     # -- Self Service
-    updateMe(input: UpdateUserInput!): User
+    updateMe(input: UpdateUserInput!): UpdateUserResponse
 
     # -- User Management
     inviteUser(email: String!, roleName: String!): Boolean
     acceptInvite(token: String!): Boolean
     assignRole(userId: String!, roleName: String!): Boolean
     removeUserFromTenant(userId: String!): Boolean
-    updateUser(userId: String!, input: UpdateUserInput!): User
 
     # -- Policy Management
     createPolicy(roleName: String!, policy: JSON!): Boolean

@@ -62,7 +62,7 @@ export interface IAuthProvider {
   /**
    * Multi-tenancy Management
    */
-  createProviderTenant(tenantId: string): Promise<void>; 
+  createProviderTenant(tenantId: string): Promise<void>;
 
   associateUserToTenant(userId: string, tenantId: string): Promise<void>;
 
@@ -112,6 +112,6 @@ export interface IAuthProvider {
   consumePendingInvite(userId: string, token: string): Promise<InviteInfo | null>;
 
   getPasswordChangeRequirement(userId: string): Promise<boolean>;
-  
+
   setPasswordChangeRequirement(userId: string, required: boolean): Promise<void>;
 }
