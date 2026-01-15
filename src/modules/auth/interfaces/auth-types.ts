@@ -29,20 +29,6 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-export interface LoginResponse {
-  user: AuthUser;
-  tokens: AuthTokens;
-  sessionHandle: string;
-  status?: string;
-}
-
-export interface RegisterResponse {
-  user: AuthUser;
-  tokens: AuthTokens;
-  sessionHandle: string;
-  status?: string;
-}
-
 export interface TotpDevice {
   deviceName: string;
   secret: string;
@@ -60,6 +46,7 @@ export interface MfaVerificationResult {
   refreshToken?: string;
 }
 
+// Unified response type for Login and Register operations
 export interface AuthServiceResponse {
   user: AuthUser;
   tenant: any | null;

@@ -4,8 +4,6 @@ import { RolePolicy, InviteInfo } from './rbac.interface';
 export interface IAuthProvider {
   /**
    * Basic Authentication Operations
-   * Note: context parameter is optional (type any), required for providers
-   * like SuperTokens that need req/res objects.
    */
   verifyCredentials(email: string, password: string): Promise<AuthUser>;
 
@@ -36,6 +34,7 @@ export interface IAuthProvider {
       countryCode?: string;
       timezone?: string;
       language?: string;
+      avatar?: string;
     },
   ): Promise<AuthUser>;
 
@@ -45,6 +44,10 @@ export interface IAuthProvider {
   createPasswordResetToken(userId: string): Promise<string>;
 
   resetPassword(token: string, newPassword: string): Promise<boolean>;
+
+  getPasswordChangeRequirement(userId: string): Promise<boolean>;
+
+  setPasswordChangeRequirement(userId: string, required: boolean): Promise<void>;
 
   /**
    * MFA (Time-based One-Time Password) Management
@@ -60,7 +63,7 @@ export interface IAuthProvider {
   listTotpDevices(userId: string): Promise<any[]>;
 
   /**
-   * Multi-tenancy Management
+   * Multi-tenancy & Role Management
    */
   createProviderTenant(tenantId: string): Promise<void>;
 
@@ -70,48 +73,23 @@ export interface IAuthProvider {
 
   getTenantUsers(tenantId: string, limit?: number, paginationToken?: string): Promise<UserPaginationResult>;
 
-  /**
-   * Gets the user's role in the tenant.
-   */
   getUserRoleInTenant(userId: string, tenantId: string): Promise<string | null>;
 
-  /**
-   * Assigns a role to the user in the tenant.
-   */
   assignRoleToUser(userId: string, tenantId: string, roleName: string): Promise<void>;
 
-  /**
-   * Removes the user's role in the tenant.
-   */
   removeUserRole(userId: string, tenantId: string): Promise<void>;
 
-  /**
-   * Lists defined roles in the tenant.
-   */
   listTenantRoles(tenantId: string): Promise<string[]>;
 
-  /**
-   * Gets the policy (permissions) of a specific role.
-   */
   getRolePolicy(tenantId: string, roleName: string): Promise<RolePolicy | null>;
 
-  /**
-   * Creates or updates a role policy.
-   */
   setRolePolicy(tenantId: string, roleName: string, policy: RolePolicy): Promise<void>;
 
-  /**
-   * Deletes a role policy.
-   */
   deleteRolePolicy(tenantId: string, roleName: string): Promise<void>;
 
-  // --- INVITE MANAGEMENT ---
+  // --- Invite Management ---
 
   addPendingInvite(userId: string, token: string, invite: InviteInfo): Promise<void>;
 
   consumePendingInvite(userId: string, token: string): Promise<InviteInfo | null>;
-
-  getPasswordChangeRequirement(userId: string): Promise<boolean>;
-
-  setPasswordChangeRequirement(userId: string, required: boolean): Promise<void>;
 }

@@ -21,15 +21,19 @@ export class SuperTokensProvider implements IAuthProvider {
   private cache: NodeCache;
 
   constructor() {
+    // Cache TTL: 10 minutes, Check Period: 2 minutes
     this.cache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
   }
 
-  // --- 1. Basic Auth Operations ---
+  // ===========================================================================
+  // 1. Basic Authentication & Session Management
+  // ===========================================================================
+
   async verifyCredentials(email: string, password: string): Promise<AuthUser> {
     const response = await EmailPassword.signIn('public', email, password);
 
     if (response.status === 'WRONG_CREDENTIALS_ERROR') {
-      throw new GraphQLError('Wrong credentials', {
+      throw new GraphQLError('Invalid email or password.', {
         extensions: { code: 'WRONG_CREDENTIALS', http: { status: 401 } },
       });
     }
@@ -53,7 +57,6 @@ export class SuperTokensProvider implements IAuthProvider {
     }
 
     const user = response.user;
-
     return {
       id: user.id,
       email: user.emails[0],
@@ -65,6 +68,7 @@ export class SuperTokensProvider implements IAuthProvider {
     const recipeUserId = new SuperTokens.RecipeUserId(userId);
 
     try {
+      // Create session without cookie dependency (for body-based auth)
       const session = await Session.createNewSessionWithoutRequestResponse('public', recipeUserId, payload);
       const tokens = session.getAllSessionTokensDangerously();
 
@@ -76,14 +80,16 @@ export class SuperTokensProvider implements IAuthProvider {
         sessionHandle: session.getHandle(),
       };
     } catch (error) {
-      throw new GraphQLError('Session creation failed.', {
-        extensions: { code: 'SESSION_CREATION_FAILED', http: { status: 401 } },
+      console.error('Session creation error:', error);
+      throw new GraphQLError('Failed to create session.', {
+        extensions: { code: 'SESSION_CREATION_FAILED', http: { status: 500 } },
       });
     }
   }
 
   async refreshToken(refreshToken: string, context?: any): Promise<AuthTokens> {
     try {
+      // Manually verify and refresh the session using the refresh token
       const result = await Session.refreshSessionWithoutRequestResponse(refreshToken);
       const sessionData = result.getAllSessionTokensDangerously();
 
@@ -93,13 +99,13 @@ export class SuperTokensProvider implements IAuthProvider {
       };
     } catch (err: any) {
       if (err.type === Session.Error.TRY_REFRESH_TOKEN) {
-        throw new GraphQLError('Session invalid, please login again.', {
+        throw new GraphQLError('Session invalid or expired. Please log in again.', {
           extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } },
         });
       }
 
       if (err.type === Session.Error.TOKEN_THEFT_DETECTED) {
-        throw new GraphQLError('Token theft detected, session revoked.', {
+        throw new GraphQLError('Token theft detected. Session has been revoked.', {
           extensions: { code: 'TOKEN_THEFT', http: { status: 401 } },
         });
       }
@@ -111,15 +117,13 @@ export class SuperTokensProvider implements IAuthProvider {
   }
 
   async logout(userId: string): Promise<void> {
-    // In SuperTokens logout is usually managed from frontend or session is revoked
+    // Revoke all sessions for the user (Global Logout)
     await Session.revokeAllSessionsForUser(userId);
   }
 
-  async updateSessionPayload(sessionHandle: string, payload: any): Promise<void> {
-    await Session.mergeIntoAccessTokenPayload(sessionHandle, payload);
-  }
-
-  // --- 2. User Management ---
+  // ===========================================================================
+  // 2. User Management
+  // ===========================================================================
 
   async getUser(userId: string): Promise<AuthUser | null> {
     const user = await SuperTokens.getUser(userId);
@@ -147,25 +151,9 @@ export class SuperTokensProvider implements IAuthProvider {
   async getUserByEmail(email: string): Promise<AuthUser | null> {
     const users = await SuperTokens.listUsersByAccountInfo('public', { email });
     if (users.length === 0) return null;
-    const user = users[0];
-
-    const { metadata } = await UserMetadata.getUserMetadata(user.id);
-    const profile = (metadata.profile as UserProfile) || {};
-
-    return {
-      id: user.id,
-      email: user.emails[0],
-      timeJoined: user.timeJoined,
-      tenantIds: user.tenantIds,
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      title: profile.title,
-      phone: profile.phone,
-      countryCode: profile.countryCode,
-      timezone: profile.timezone,
-      language: profile.language,
-      avatar: profile.avatar,
-    };
+    
+    // Recursive call to get full profile data
+    return this.getUser(users[0].id);
   }
 
   async updateUser(
@@ -184,6 +172,9 @@ export class SuperTokensProvider implements IAuthProvider {
       avatar?: string;
     },
   ): Promise<AuthUser> {
+    const recipeUserId = new SuperTokens.RecipeUserId(userId);
+
+    // 1. Handle Password Change
     if (data.password) {
       if (!data.currentPassword) {
         throw new GraphQLError('Current password is required to set a new password.', {
@@ -191,26 +182,25 @@ export class SuperTokensProvider implements IAuthProvider {
         });
       }
 
+      // Verify current password first
       const user = await this.getUser(userId);
       if (!user) throw new GraphQLError('User not found.');
 
-      try {
-        await this.verifyCredentials(user.email, data.currentPassword);
-      } catch (e) {
+      const authResponse = await EmailPassword.signIn('public', user.email, data.currentPassword);
+      if (authResponse.status === 'WRONG_CREDENTIALS_ERROR') {
         throw new GraphQLError('Invalid current password.', {
           extensions: { code: 'INVALID_PASSWORD' },
         });
       }
 
-      const recipeUserId = new SuperTokens.RecipeUserId(userId);
       await EmailPassword.updateEmailOrPassword({
         recipeUserId,
         password: data.password,
       });
     }
 
+    // 2. Handle Email Change
     if (data.email) {
-      const recipeUserId = new SuperTokens.RecipeUserId(userId);
       const response = await EmailPassword.updateEmailOrPassword({
         recipeUserId,
         email: data.email,
@@ -220,6 +210,7 @@ export class SuperTokensProvider implements IAuthProvider {
       }
     }
 
+    // 3. Handle Profile Metadata Update
     const profileUpdates: Partial<UserProfile> = {};
     if (data.firstName !== undefined) profileUpdates.firstName = data.firstName;
     if (data.lastName !== undefined) profileUpdates.lastName = data.lastName;
@@ -242,11 +233,11 @@ export class SuperTokensProvider implements IAuthProvider {
     return (await this.getUser(userId))!;
   }
 
-  // --- 3. Password Reset ---
+  // ===========================================================================
+  // 3. Password Reset & Security Policies
+  // ===========================================================================
 
   async createPasswordResetToken(userId: string): Promise<string> {
-    // Note: SuperTokens createResetPasswordToken usually accepts email, not userId.
-    // However, if we receive userId due to interface, we must find the email first.
     const user = await this.getUser(userId);
     if (!user) throw new Error('User not found');
 
@@ -263,15 +254,31 @@ export class SuperTokensProvider implements IAuthProvider {
     return response.status === 'OK';
   }
 
-  // --- 4. MFA / TOTP ---
+  async getPasswordChangeRequirement(userId: string): Promise<boolean> {
+    try {
+      const { metadata } = await UserMetadata.getUserMetadata(userId);
+      const userMeta = metadata as UserMetadataStructure;
+      return userMeta.requires_password_change === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async setPasswordChangeRequirement(userId: string, required: boolean): Promise<void> {
+    await UserMetadata.updateUserMetadata(userId, {
+      requires_password_change: required,
+    });
+  }
+
+  // ===========================================================================
+  // 4. Multi-Factor Authentication (TOTP)
+  // ===========================================================================
 
   async createTotpDevice(userId: string, deviceName: string): Promise<TotpDevice> {
     const response = await Totp.createDevice(userId, undefined, deviceName);
 
     if (response.status === 'DEVICE_ALREADY_EXISTS_ERROR') {
-      throw new GraphQLError('Device name already exists.', {
-        extensions: { code: 'BAD_REQUEST' },
-      });
+      throw new GraphQLError('Device name already exists.', { extensions: { code: 'BAD_REQUEST' } });
     }
     if (response.status === 'UNKNOWN_USER_ID_ERROR') {
       throw new GraphQLError('User not found.', { extensions: { code: 'UNAUTHENTICATED' } });
@@ -287,12 +294,8 @@ export class SuperTokensProvider implements IAuthProvider {
   async verifyTotpDevice(userId: string, deviceName: string, code: string): Promise<MfaVerificationResult> {
     const response = await Totp.verifyDevice('public', userId, deviceName, code);
 
-    if (response.status === 'UNKNOWN_DEVICE_ERROR') {
-      throw new GraphQLError('Device not found.');
-    }
-    if (response.status === 'INVALID_TOTP_ERROR') {
-      throw new GraphQLError('Invalid code.');
-    }
+    if (response.status === 'UNKNOWN_DEVICE_ERROR') throw new GraphQLError('Device not found.');
+    if (response.status === 'INVALID_TOTP_ERROR') throw new GraphQLError('Invalid TOTP code.');
 
     return { verified: true };
   }
@@ -301,7 +304,7 @@ export class SuperTokensProvider implements IAuthProvider {
     const response = await Totp.verifyTOTP('public', userId, code);
 
     if (response.status === 'UNKNOWN_USER_ID_ERROR') throw new GraphQLError('User not found.');
-    if (response.status === 'INVALID_TOTP_ERROR') throw new GraphQLError('Invalid code.');
+    if (response.status === 'INVALID_TOTP_ERROR') throw new GraphQLError('Invalid TOTP code.');
 
     return { verified: true };
   }
@@ -315,7 +318,9 @@ export class SuperTokensProvider implements IAuthProvider {
     return res.devices;
   }
 
-  // --- 5. Multi-tenancy ---
+  // ===========================================================================
+  // 5. Multi-tenancy & Tenant Management
+  // ===========================================================================
 
   async createProviderTenant(tenantId: string): Promise<void> {
     await Multitenancy.createOrUpdateTenant(tenantId, {
@@ -369,7 +374,9 @@ export class SuperTokensProvider implements IAuthProvider {
     };
   }
 
-  // --- POLICY / RBAC METHODS ---
+  // ===========================================================================
+  // 6. RBAC (Roles & Permissions) - Stored in Metadata
+  // ===========================================================================
 
   async getUserRoleInTenant(userId: string, tenantId: string): Promise<string | null> {
     try {
@@ -377,7 +384,7 @@ export class SuperTokensProvider implements IAuthProvider {
       const userMeta = metadata as UserMetadataStructure;
       return userMeta.tenants?.[tenantId] || null;
     } catch (error) {
-      console.error(`Error fetching user role for tenant ${tenantId}:`, error);
+      console.error(`Error fetching role for tenant ${tenantId}:`, error);
       return null;
     }
   }
@@ -400,9 +407,7 @@ export class SuperTokensProvider implements IAuthProvider {
     const { metadata } = await UserMetadata.getUserMetadata(userId);
     const userMeta = metadata as UserMetadataStructure;
 
-    if (!userMeta.tenants || !userMeta.tenants[tenantId]) {
-      return;
-    }
+    if (!userMeta.tenants || !userMeta.tenants[tenantId]) return;
 
     const updatedTenants = { ...userMeta.tenants };
     delete updatedTenants[tenantId];
@@ -413,12 +418,14 @@ export class SuperTokensProvider implements IAuthProvider {
   }
 
   async listTenantRoles(tenantId: string): Promise<string[]> {
+    // Cache roles to reduce database hits on metadata
     const cacheKey = `roles_list:${tenantId}`;
     const cachedList = this.cache.get<string[]>(cacheKey);
     if (cachedList) return cachedList;
 
     try {
-      // We keep tenant roles on a virtual user
+      // Storing role list in a "virtual" user metadata or similar shared storage
+      // For this implementation, we assume roles are stored in a dedicated metadata key
       const { metadata } = await UserMetadata.getUserMetadata(cacheKey);
       const roles = (metadata.roles as string[]) || [];
 
@@ -448,12 +455,12 @@ export class SuperTokensProvider implements IAuthProvider {
   }
 
   async setRolePolicy(tenantId: string, roleName: string, policy: RolePolicy): Promise<void> {
-    // 1. Save policy data
+    // 1. Save Policy Data
     const policyKey = `policy:${tenantId}:${roleName}`;
     await UserMetadata.updateUserMetadata(policyKey, { policy: policy as any });
-    this.cache.del(policyKey);
+    this.cache.del(policyKey); // Invalidate cache
 
-    // 2. Add to role list
+    // 2. Update Role List
     const listKey = `roles_list:${tenantId}`;
     const { metadata } = await UserMetadata.getUserMetadata(listKey);
     const currentRoles = (metadata.roles as string[]) || [];
@@ -466,12 +473,12 @@ export class SuperTokensProvider implements IAuthProvider {
   }
 
   async deleteRolePolicy(tenantId: string, roleName: string): Promise<void> {
-    // 1. Delete policy data
+    // 1. Remove Policy Data
     const policyKey = `policy:${tenantId}:${roleName}`;
     await UserMetadata.updateUserMetadata(policyKey, { policy: null });
     this.cache.del(policyKey);
 
-    // 2. Remove from role list
+    // 2. Update Role List
     const listKey = `roles_list:${tenantId}`;
     const { metadata } = await UserMetadata.getUserMetadata(listKey);
     const currentRoles = (metadata.roles as string[]) || [];
@@ -482,6 +489,10 @@ export class SuperTokensProvider implements IAuthProvider {
       this.cache.del(listKey);
     }
   }
+
+  // ===========================================================================
+  // 7. Invitations
+  // ===========================================================================
 
   async addPendingInvite(userId: string, token: string, invite: InviteInfo): Promise<void> {
     const { metadata } = await UserMetadata.getUserMetadata(userId);
@@ -515,23 +526,5 @@ export class SuperTokensProvider implements IAuthProvider {
     });
 
     return inviteData;
-  }
-
-  // --- Password Change Requirement
-
-  async getPasswordChangeRequirement(userId: string): Promise<boolean> {
-    try {
-      const { metadata } = await UserMetadata.getUserMetadata(userId);
-      const userMeta = metadata as any;
-      return userMeta.requires_password_change === true;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  async setPasswordChangeRequirement(userId: string, required: boolean): Promise<void> {
-    await UserMetadata.updateUserMetadata(userId, {
-      requires_password_change: required,
-    });
   }
 }
