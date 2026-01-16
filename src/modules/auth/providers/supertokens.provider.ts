@@ -7,15 +7,21 @@ import UserMetadata from 'supertokens-node/recipe/usermetadata';
 import NodeCache from 'node-cache';
 import { GraphQLError } from 'graphql';
 import { IAuthProvider } from '../interfaces/auth-provider.interface';
-import {
-  AuthUser,
-  AuthTokens,
-  TotpDevice,
-  MfaVerificationResult,
-  UserPaginationResult,
-  UserProfile,
-} from '../interfaces/auth-types';
-import { RolePolicy, InviteInfo, UserMetadataStructure } from '../interfaces/rbac.interface';
+import { 
+  AuthUser, 
+  UserProfile, 
+  TotpDevice, 
+  InviteInfo 
+} from '../interfaces/auth.entities';
+import { 
+  AuthTokens, 
+  MfaVerificationResult, 
+  UserPaginationResult 
+} from '../interfaces/auth.dtos';
+import { 
+  RolePolicy, 
+  UserMetadataStructure 
+} from '../interfaces/rbac.types';
 
 export class SuperTokensProvider implements IAuthProvider {
   private cache: NodeCache;

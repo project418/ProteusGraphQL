@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ISession } from './modules/auth/interfaces/session.interface';
-import { RolePolicy } from './modules/auth/interfaces/rbac.interface';
+import { RolePolicy } from './modules/auth/interfaces/rbac.types';
 import { AuthService } from './modules/auth/services/auth.service';
 import { SchemaService } from './modules/schema/services/schema.service';
 import { DataService } from './modules/data/services/data.service';

@@ -1,18 +1,20 @@
 import { GraphQLError } from 'graphql';
 import crypto from 'crypto';
 import { IAuthProvider } from '../interfaces/auth-provider.interface';
-import {
-  AuthServiceResponse,
-  AuthUser,
-  TotpDevice,
-  MfaVerificationResult,
-  UserPaginationResult,
-  AuthTokens,
-  UpdateUserResult,
-} from '../interfaces/auth-types';
-import { IAuthContext } from '../interfaces/auth-context.interface';
-import { RolePolicy } from '../interfaces/rbac.interface';
+import { 
+  AuthUser, 
+  TotpDevice 
+} from '../interfaces/auth.entities';
+import { 
+  AuthServiceResponse, 
+  MfaVerificationResult, 
+  UserPaginationResult, 
+  AuthTokens, 
+  UpdateUserResult 
+} from '../interfaces/auth.dtos';
+import { RolePolicy } from '../interfaces/rbac.types';
 import { TenantService } from '../../tenant/services/tenant.service';
+import { IAuthContext } from '../interfaces/auth-context.interface'
 
 export class AuthService {
   constructor(

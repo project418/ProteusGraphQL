@@ -1,3 +1,5 @@
+import { InviteInfo } from './auth.entities';
+
 export interface EntityPermission {
   access: boolean;
   actions: ('create' | 'read' | 'update' | 'delete' | '*')[];
@@ -10,13 +12,6 @@ export interface RolePolicy {
   permissions: {
     [entityName: string]: EntityPermission;
   };
-}
-
-export interface InviteInfo {
-  tenantId: string;
-  roleName: string;
-  invitedBy: string;
-  createdAt: number;
 }
 
 export interface UserMetadataStructure {

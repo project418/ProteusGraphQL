@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 import { MyContext } from '../../context';
 import { protect } from './utils/auth-middleware';
 import { checkEntityAccess } from './utils/rbac-helper';
-import { RolePolicy } from './interfaces/rbac.interface';
+import { RolePolicy } from './interfaces/rbac.types';
 
 const resolvers = {
   Query: {
