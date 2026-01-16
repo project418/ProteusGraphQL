@@ -14,31 +14,52 @@ import { verifySession } from 'supertokens-node/recipe/session/framework/express
 import { SessionRequest } from 'supertokens-node/framework/express';
 import SuperTokens from 'supertokens-node';
 
+// TypeDefs & Resolvers (Updated Paths)
 import schemaTypeDefs from './modules/schema/typeDefs';
 import schemaResolvers from './modules/schema/resolvers';
 import dataTypeDefs from './modules/data/typeDefs';
 import dataResolvers from './modules/data/resolvers';
-import authTypeDefs from './modules/auth/typeDefs';
-import authResolvers from './modules/auth/resolvers';
+import authTypeDefs from './modules/auth/api/typeDefs';
+import authResolvers from './modules/auth/api/resolvers';
 
 import { MyContext } from './context';
 import { formatError } from './utils/error-handler';
 
-import { AuthService } from './modules/auth/services/auth.service';
+// Services
 import { SchemaService } from './modules/schema/services/schema.service';
 import { DataService } from './modules/data/services/data.service';
 import { TenantService } from './modules/tenant/services/tenant.service';
-import { SuperTokensProvider } from './modules/auth/providers/supertokens.provider';
+
+// Providers
+import { SuperTokensCoreProvider } from './modules/auth/providers/supertokens/auth-core.provider';
+import { SuperTokensIamProvider } from './modules/auth/providers/supertokens/iam.provider';
+import { SuperTokensRbacProvider } from './modules/auth/providers/supertokens/rbac.provider';
+import { SuperTokensMfaProvider } from './modules/auth/providers/supertokens/mfa.provider';
 import { SuperTokensSession } from './modules/auth/providers/supertokens.session';
+
+// Auth Sub-Services
+import { AuthCoreService } from './modules/auth/services/auth-core.service';
+import { IamService } from './modules/auth/services/iam.service';
+import { RbacService } from './modules/auth/services/rbac.service';
+import { MfaService } from './modules/auth/services/mfa.service';
 
 initSuperTokens();
 
-const authProvider = new SuperTokensProvider();
+// Provider & Services Init
+const authCoreProvider = new SuperTokensCoreProvider();
+const iamProvider = new SuperTokensIamProvider();
+const rbacProvider = new SuperTokensRbacProvider();
+const mfaProvider = new SuperTokensMfaProvider();
+
 const tenantService = new TenantService();
 const schemaService = new SchemaService();
 const dataService = new DataService();
 
-const authService = new AuthService(authProvider, tenantService);
+// Auth Sub-Services Instantiation
+const authCoreService = new AuthCoreService(authCoreProvider, iamProvider, rbacProvider, mfaProvider, tenantService);
+const iamService = new IamService(iamProvider, authCoreProvider, rbacProvider, mfaProvider, tenantService);
+const rbacService = new RbacService(rbacProvider);
+const mfaService = new MfaService(mfaProvider, authCoreProvider);
 
 const rootTypeDefs = `#graphql
   type Query {
@@ -51,7 +72,6 @@ const rootTypeDefs = `#graphql
 `;
 
 const typeDefs = mergeTypeDefs([rootTypeDefs, schemaTypeDefs, dataTypeDefs, authTypeDefs]);
-
 const resolvers = mergeResolvers([schemaResolvers, dataResolvers, authResolvers]);
 
 const startServer = async () => {
@@ -97,13 +117,14 @@ const startServer = async () => {
         let currentUserRole: string | undefined = undefined;
         let currentPermissions: any = undefined;
 
+        // RBAC Logic: Fetch permissions using RbacService
         if (session && tenantId) {
           const userId = session.getUserId();
 
-          const roleName = await authService.getUserRoleInTenant(userId, tenantId);
+          const roleName = await rbacService.getUserRoleInTenant(userId, tenantId);
           if (roleName) {
             currentUserRole = roleName;
-            const policy = await authService.getRolePolicy(tenantId, roleName);
+            const policy = await rbacService.getRolePolicy(tenantId, roleName);
             if (policy) {
               currentPermissions = policy.permissions;
             }
@@ -111,16 +132,22 @@ const startServer = async () => {
         }
 
         return {
+          req,
+          res,
           session,
-          authService,
+          // Inject Sub-Services
+          authCoreService,
+          iamService,
+          rbacService,
+          mfaService,
+          // Other Services
           schemaService,
           dataService,
           tenantService,
+          // State
           tenantId,
           currentUserRole,
           currentPermissions,
-          req,
-          res,
         };
       },
     }),
