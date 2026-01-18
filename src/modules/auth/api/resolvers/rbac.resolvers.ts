@@ -4,6 +4,9 @@ import { protect } from '../../utils/auth-middleware';
 import { checkEntityAccess } from '../../utils/rbac-helper';
 import { RolePolicy } from '../../interfaces/rbac.types';
 
+// Define system roles that have special protectionss
+const SYSTEM_ROLES = ['admin'];
+
 const resolvers = {
   AuthQueries: {
     listPolicies: protect(async (_parent: any, _args: any, ctx: MyContext) => {
@@ -34,6 +37,22 @@ const resolvers = {
       if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
       checkEntityAccess(ctx, 'system_iam', 'create');
 
+      if (SYSTEM_ROLES.includes(args.roleName)) {
+         throw new GraphQLError('Cannot create or overwrite system roles.', { extensions: { code: 'FORBIDDEN' } });
+      }
+
+      await ctx.rbacService.setRolePolicy(ctx.tenantId, args.roleName, args.policy);
+      return true;
+    }),
+
+    updatePolicy: protect(async (_parent: any, args: { roleName: string; policy: RolePolicy }, ctx: MyContext) => {
+      if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
+      checkEntityAccess(ctx, 'system_iam', 'update');
+
+      if (SYSTEM_ROLES.includes(args.roleName)) {
+        throw new GraphQLError('System roles cannot be modified.', { extensions: { code: 'FORBIDDEN' } });
+      }
+
       await ctx.rbacService.setRolePolicy(ctx.tenantId, args.roleName, args.policy);
       return true;
     }),
@@ -42,8 +61,8 @@ const resolvers = {
       if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
       checkEntityAccess(ctx, 'system_iam', 'delete');
 
-      if (args.roleName === 'admin') {
-        throw new GraphQLError('Cannot delete root admin role.', { extensions: { code: 'BAD_REQUEST' } });
+      if (SYSTEM_ROLES.includes(args.roleName)) {
+        throw new GraphQLError('Cannot delete system roles.', { extensions: { code: 'FORBIDDEN' } });
       }
 
       await ctx.rbacService.deleteRolePolicy(ctx.tenantId, args.roleName);

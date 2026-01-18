@@ -14,6 +14,7 @@ const typeDefs = `#graphql
     timezone: String
     language: String
     avatar: String
+    role: String
   }
 
   type Tenant {

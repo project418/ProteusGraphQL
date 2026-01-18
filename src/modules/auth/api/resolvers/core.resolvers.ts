@@ -2,6 +2,15 @@ import { MyContext } from '../../../../context';
 import { protect } from '../../utils/auth-middleware';
 
 const resolvers = {
+  User: {
+    role: async (parent: any, _args: any, ctx: MyContext) => {
+      if (ctx.tenantId) {
+        return await ctx.rbacService.getUserRoleInTenant(parent.id, ctx.tenantId);
+      }
+      return null;
+    }
+  },
+
   AuthQueries: {
     // Uses IamService
     me: protect(async (_parent: any, _args: any, ctx: MyContext) => {

@@ -25,6 +25,7 @@ const typeDefs = `#graphql
   extend type AuthMutations {
     # -- Policy Management
     createPolicy(roleName: String!, policy: JSON!): Boolean
+    updatePolicy(roleName: String!, policy: JSON!): Boolean
     deletePolicy(roleName: String!): Boolean
   }
 `;
