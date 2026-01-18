@@ -1,4 +1,4 @@
-import { AuthUser } from './auth.entities';
+import { AuthUser, AuthTenant } from './auth.entities';
 
 export interface AuthTokens {
   accessToken: string;
@@ -13,12 +13,15 @@ export interface MfaVerificationResult {
 
 export interface AuthServiceResponse {
   user: AuthUser;
-  tenant: any | null;
-  availableTenants: any[];
+  tenant: AuthTenant | null;
+  availableTenants: AuthTenant[];
+
   accessToken: string;
   refreshToken: string;
+
   role: string | null;
   permissions: string[] | null;
+
   requiresPasswordChange: boolean;
   requiresMfa: boolean;
   mfaEnforced: boolean;

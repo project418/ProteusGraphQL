@@ -2,10 +2,7 @@ const typeDefs = `#graphql
   # ---------------------------------------------------------
   # --- Core Entities
   # ---------------------------------------------------------
-  type User {
-    id: ID!
-    email: String!
-    timeJoined: Float
+  type UserProfile {
     firstName: String
     lastName: String
     title: String
@@ -14,14 +11,21 @@ const typeDefs = `#graphql
     timezone: String
     language: String
     avatar: String
+  }
+
+  type User {
+    id: ID!
+    email: String!
+    timeJoined: Float 
+    profile: UserProfile
     role: String
   }
 
   type Tenant {
     id: ID!
     name: String!
-    created_at: String
-    updated_at: String
+    createdAt: String
+    updatedAt: String
   }
 
   # ---------------------------------------------------------
@@ -50,7 +54,6 @@ const typeDefs = `#graphql
   # --- Auth Queries & Mutations (Core)
   # ---------------------------------------------------------
   type AuthQueries {
-    # -- Self Service
     me: User
     myPermissions: [String]
     myTenants: [Tenant]

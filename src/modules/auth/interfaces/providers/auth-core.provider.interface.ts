@@ -1,7 +1,5 @@
 import { AuthUser } from '../auth.entities';
 import { AuthTokens } from '../auth.dtos';
-import { RolePolicy } from '../rbac.types';
-import { TotpDevice } from '../auth.entities';
 
 export interface IAuthCoreProvider {
   // Authentication

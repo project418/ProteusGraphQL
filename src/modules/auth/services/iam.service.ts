@@ -4,7 +4,7 @@ import { IIamProvider } from '../interfaces/providers/iam.provider.interface';
 import { IRbacProvider } from '../interfaces/providers/rbac.provider.interface';
 import { IMfaProvider } from '../interfaces/providers/mfa.provider.interface';
 import { IAuthCoreProvider } from '../interfaces/providers/auth-core.provider.interface';
-import { AuthUser } from '../interfaces/auth.entities';
+import { AuthUser, AuthTenant, UserProfile } from '../interfaces/auth.entities';
 import { UserPaginationResult, UpdateUserResult } from '../interfaces/auth.dtos';
 import { TenantService } from '../../tenant/services/tenant.service';
 import { IAuthContext } from '../interfaces/auth-context.interface';
@@ -21,9 +21,14 @@ export class IamService {
   /**
    * Creates a tenant in DB, registers it in Auth Provider, and assigns admin role to creator.
    */
-  async createOwnTenant(userId: string, tenantName: string, context: IAuthContext): Promise<any> {
+  async createOwnTenant(userId: string, tenantName: string, context: IAuthContext): Promise<AuthTenant> {
     // 1. Create Tenant in Database (via gRPC)
-    const newTenant: any = await this.tenantService.createTenant(tenantName, context as any);
+    const newTenant = await this.tenantService.createTenant(tenantName, context as any);
+
+    if (!newTenant) {
+      throw new GraphQLError('Failed to create tenant organization.');
+    }
+
     const newTenantId = newTenant.id;
 
     try {
@@ -50,8 +55,16 @@ export class IamService {
     }
   }
 
-  async updateTenant(id: string, name: string, context: IAuthContext): Promise<any> {
-    return await this.tenantService.updateTenant(id, name, context as any);
+  async updateTenant(id: string, name: string, context: IAuthContext): Promise<AuthTenant> {
+    const updatedTenant = await this.tenantService.updateTenant(id, name, context as any);
+
+    if (!updatedTenant) {
+      throw new GraphQLError('Tenant not found or could not be updated.', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    return updatedTenant;
   }
 
   // --- User Invites ---
@@ -106,12 +119,12 @@ export class IamService {
     return await this.provider.getUser(userId);
   }
 
-  async getTenants(userId: string, context: IAuthContext): Promise<any[]> {
+  async getTenants(userId: string, context: IAuthContext): Promise<AuthTenant[]> {
     const user = await this.provider.getUser(userId);
     if (!user || !user.tenantIds) return [];
 
     const tenantIds = user.tenantIds.filter((id) => id !== 'public');
-    const tenants = [];
+    const tenants: AuthTenant[] = [];
 
     for (const tId of tenantIds) {
       try {
@@ -133,7 +146,11 @@ export class IamService {
 
   async updateUser(
     userId: string,
-    input: { email?: string; password?: string; currentPassword?: string },
+    input: {
+      email?: string;
+      password?: string;
+      currentPassword?: string;
+    } & Partial<UserProfile>,
     context?: IAuthContext,
   ): Promise<UpdateUserResult> {
     const updatedUser = await this.provider.updateUser(userId, input);

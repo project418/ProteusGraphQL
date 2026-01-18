@@ -2,13 +2,12 @@ import SuperTokens from 'supertokens-node';
 import EmailPassword from 'supertokens-node/recipe/emailpassword';
 import Session from 'supertokens-node/recipe/session';
 import UserMetadata from 'supertokens-node/recipe/usermetadata';
-import Totp from 'supertokens-node/recipe/totp';
 import { GraphQLError } from 'graphql';
 
 import { IAuthCoreProvider } from '../../interfaces/providers/auth-core.provider.interface';
 import { AuthUser, UserProfile } from '../../interfaces/auth.entities';
 import { AuthTokens } from '../../interfaces/auth.dtos';
-import { RolePolicy, UserMetadataStructure } from '../../interfaces/rbac.types';
+import { UserMetadataStructure } from '../../interfaces/user-metadata.types';
 
 export class SuperTokensCoreProvider implements IAuthCoreProvider {
   async verifyCredentials(email: string, password: string): Promise<AuthUser> {

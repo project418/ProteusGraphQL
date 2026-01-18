@@ -2,12 +2,12 @@ import SuperTokens from 'supertokens-node';
 import Multitenancy from 'supertokens-node/recipe/multitenancy';
 import UserMetadata from 'supertokens-node/recipe/usermetadata';
 import EmailPassword from 'supertokens-node/recipe/emailpassword';
+import { GraphQLError } from 'graphql';
 
 import { IIamProvider } from '../../interfaces/providers/iam.provider.interface';
 import { AuthUser, InviteInfo, UserProfile } from '../../interfaces/auth.entities';
 import { UserPaginationResult } from '../../interfaces/auth.dtos';
-import { UserMetadataStructure } from '../../interfaces/rbac.types';
-import { GraphQLError } from 'graphql/error';
+import { UserMetadataStructure } from '../../interfaces/user-metadata.types';
 
 export class SuperTokensIamProvider implements IIamProvider {
   // --- User Management ---
@@ -23,14 +23,16 @@ export class SuperTokensIamProvider implements IIamProvider {
       email: user.emails[0],
       timeJoined: user.timeJoined,
       tenantIds: user.tenantIds,
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      title: profile.title,
-      phone: profile.phone,
-      countryCode: profile.countryCode,
-      timezone: profile.timezone,
-      language: profile.language,
-      avatar: profile.avatar,
+      profile: {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        title: profile.title,
+        phone: profile.phone,
+        countryCode: profile.countryCode,
+        timezone: profile.timezone,
+        language: profile.language,
+        avatar: profile.avatar,
+      },
     };
   }
 
@@ -55,6 +57,7 @@ export class SuperTokensIamProvider implements IIamProvider {
       id: user.id,
       email: user.emails[0],
       timeJoined: user.timeJoined,
+      profile: {},
     };
   }
 
@@ -84,7 +87,6 @@ export class SuperTokensIamProvider implements IIamProvider {
         });
       }
 
-      // Verify current password first
       const user = await this.getUser(userId);
       if (!user) throw new GraphQLError('User not found.');
 
@@ -170,14 +172,16 @@ export class SuperTokensIamProvider implements IIamProvider {
           id: u.id,
           email: u.emails[0],
           timeJoined: u.timeJoined,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          title: profile.title,
-          phone: profile.phone,
-          countryCode: profile.countryCode,
-          timezone: profile.timezone,
-          language: profile.language,
-          avatar: profile.avatar,
+          profile: {
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            title: profile.title,
+            phone: profile.phone,
+            countryCode: profile.countryCode,
+            timezone: profile.timezone,
+            language: profile.language,
+            avatar: profile.avatar,
+          },
         };
       }),
     );

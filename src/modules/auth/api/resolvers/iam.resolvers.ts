@@ -15,7 +15,7 @@ const resolvers = {
 
   AuthMutations: {
     updateMe: protect(
-      async (_parent: any, args: { input: { email?: string; password?: string } }, ctx: MyContext) => {
+      async (_parent: any, args: { input: any }, ctx: MyContext) => {
         const userId = ctx.session!.getUserId();
         return await ctx.iamService.updateUser(userId, args.input, ctx);
       },
@@ -51,8 +51,6 @@ const resolvers = {
       if (!ctx.tenantId) throw new GraphQLError('Tenant ID required.', { extensions: { code: 'BAD_REQUEST' } });
       checkEntityAccess(ctx, 'system_iam', 'update');
 
-      // Note: assignRole is conceptually an RBAC operation but handled by IamService for user management flow,
-      // or we can use rbacService directly. Let's use RbacService for purity.
       await ctx.rbacService.assignRole(args.userId, ctx.tenantId, args.roleName);
       return true;
     }),

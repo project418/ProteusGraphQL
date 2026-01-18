@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { IAuthCoreProvider } from '../interfaces/providers/auth-core.provider.interface';
 import { AuthServiceResponse } from '../interfaces/auth.dtos';
+import { AuthTenant } from '../interfaces/auth.entities';
 import { TenantService } from '../../tenant/services/tenant.service';
 import { IAuthContext } from '../interfaces/auth-context.interface';
 import { IIamProvider } from '../interfaces/providers/iam.provider.interface';
@@ -28,8 +29,9 @@ export class AuthCoreService {
     const rawTenantIds = user.tenantIds || [];
     const tenantIds = rawTenantIds.filter((id) => id !== 'public');
 
-    let activeTenantDetails: any = null;
-    let availableTenantsDetails: any[] = [];
+    let activeTenantDetails: AuthTenant | null = null;
+    let availableTenantsDetails: AuthTenant[] = [];
+    
     let initialRole: string | null = null;
     let initialPermissions: string[] | null = null;
     let isMfaRequiredByPolicy = false;

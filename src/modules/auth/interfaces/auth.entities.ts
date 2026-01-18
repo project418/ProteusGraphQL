@@ -4,14 +4,7 @@ export interface AuthUser {
   timeJoined: number;
   tenantIds?: string[];
 
-  firstName?: string;
-  lastName?: string;
-  title?: string;
-  phone?: string;
-  countryCode?: string;
-  timezone?: string;
-  language?: string;
-  avatar?: string;
+  profile?: UserProfile;
 }
 
 export interface UserProfile {
@@ -23,6 +16,13 @@ export interface UserProfile {
   timezone?: string;
   language?: string;
   avatar?: string;
+}
+
+export interface AuthTenant {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TotpDevice {
