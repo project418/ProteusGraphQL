@@ -2,14 +2,12 @@ import crypto from 'crypto';
 import { GraphQLError } from 'graphql';
 import { IIamProvider } from '../interfaces/providers/iam.provider.interface';
 import { IRbacProvider } from '../interfaces/providers/rbac.provider.interface';
-import { IMfaProvider } from '../interfaces/providers/mfa.provider.interface'
-import { IAuthCoreProvider } from '../interfaces/providers/auth-core.provider.interface'
-import { RolePolicy } from '../interfaces/rbac.types';
+import { IMfaProvider } from '../interfaces/providers/mfa.provider.interface';
+import { IAuthCoreProvider } from '../interfaces/providers/auth-core.provider.interface';
 import { AuthUser } from '../interfaces/auth.entities';
 import { UserPaginationResult, UpdateUserResult } from '../interfaces/auth.dtos';
 import { TenantService } from '../../tenant/services/tenant.service';
 import { IAuthContext } from '../interfaces/auth-context.interface';
-
 
 export class IamService {
   constructor(
@@ -35,22 +33,13 @@ export class IamService {
       // 3. Associate User with Tenant
       await this.provider.associateUserToTenant(userId, newTenantId);
 
-      // 4. Create and Assign Admin Policy
-      const adminPolicy: RolePolicy = {
-        description: 'Root Admin Policy',
-        mfa_required: true,
-        permissions: {
-          system_iam: { access: true, actions: ['*'] },
-          '*': { access: true, actions: ['*'] },
-        },
-      };
+      // 4. Create and Assign Admin
+      await this.rbacProvider.createOrUpdateRole(newTenantId, 'admin', ['*:*']);
 
-      await this.rbacProvider.setRolePolicy(newTenantId, 'admin', adminPolicy);
       await this.rbacProvider.assignRoleToUser(userId, newTenantId, 'admin');
 
       return newTenant;
     } catch (error) {
-      // ROLLBACK: If provider setup fails, delete the created tenant from DB
       console.error(`Failed to setup provider for tenant ${newTenantId}. Rolling back...`, error);
       try {
         await this.tenantService.deleteTenant(newTenantId, context as any);

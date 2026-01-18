@@ -8,7 +8,7 @@ const resolvers = {
         return await ctx.rbacService.getUserRoleInTenant(parent.id, ctx.tenantId);
       }
       return null;
-    }
+    },
   },
 
   AuthQueries: {

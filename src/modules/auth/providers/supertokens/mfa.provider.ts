@@ -47,12 +47,12 @@ export class SuperTokensMfaProvider implements IMfaProvider {
     await Totp.removeDevice(userId, deviceName);
   }
 
-  async listTotpDevices(userId: string): Promise<{ name: string, verified: boolean }[]> {
+  async listTotpDevices(userId: string): Promise<{ name: string; verified: boolean }[]> {
     const res = await Totp.listDevices(userId);
-    
+
     return res.devices.map((device: any) => ({
       name: device.name,
-      verified: device.verified ?? false, 
+      verified: device.verified ?? false,
     }));
   }
 }

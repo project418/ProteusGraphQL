@@ -33,7 +33,8 @@ const typeDefs = `#graphql
     availableTenants: [Tenant]
     accessToken: String!
     refreshToken: String!
-    permissions: JSON
+    role: String
+    permissions: [String]
     requiresPasswordChange: Boolean
     requiresMfa: Boolean
     mfaEnforced: Boolean
@@ -51,7 +52,7 @@ const typeDefs = `#graphql
   type AuthQueries {
     # -- Self Service
     me: User
-    myPermissions: JSON
+    myPermissions: [String]
     myTenants: [Tenant]
   }
 

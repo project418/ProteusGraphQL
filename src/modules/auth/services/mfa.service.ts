@@ -1,5 +1,5 @@
 import { IMfaProvider } from '../interfaces/providers/mfa.provider.interface';
-import { IAuthCoreProvider } from '../interfaces/providers/auth-core.provider.interface'
+import { IAuthCoreProvider } from '../interfaces/providers/auth-core.provider.interface';
 import { TotpDevice } from '../interfaces/auth.entities';
 import { MfaVerificationResult } from '../interfaces/auth.dtos';
 import { IAuthContext } from '../interfaces/auth-context.interface';
@@ -7,7 +7,7 @@ import { IAuthContext } from '../interfaces/auth-context.interface';
 export class MfaService {
   constructor(
     private provider: IMfaProvider,
-    private coreProvider: IAuthCoreProvider
+    private coreProvider: IAuthCoreProvider,
   ) {}
 
   async createTotpDevice(userId: string, deviceName: string): Promise<TotpDevice> {
@@ -81,7 +81,7 @@ export class MfaService {
     return true;
   }
 
-  async listTotpDevices(userId: string): Promise<{ name: string, verified: boolean }[]> {
+  async listTotpDevices(userId: string): Promise<{ name: string; verified: boolean }[]> {
     return await this.provider.listTotpDevices(userId);
   }
 }

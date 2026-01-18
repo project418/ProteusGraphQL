@@ -115,18 +115,18 @@ const startServer = async () => {
         const tenantId = headerTenantId || '';
 
         let currentUserRole: string | undefined = undefined;
-        let currentPermissions: any = undefined;
+        let currentPermissions: string[] = [];
 
-        // RBAC Logic: Fetch permissions using RbacService
+        // RBAC Logic
         if (session && tenantId) {
           const userId = session.getUserId();
 
           const roleName = await rbacService.getUserRoleInTenant(userId, tenantId);
           if (roleName) {
             currentUserRole = roleName;
-            const policy = await rbacService.getRolePolicy(tenantId, roleName);
-            if (policy) {
-              currentPermissions = policy.permissions;
+            const permissions = await rbacService.getRolePermissions(tenantId, roleName);
+            if (permissions) {
+              currentPermissions = permissions;
             }
           }
         }
@@ -135,16 +135,13 @@ const startServer = async () => {
           req,
           res,
           session,
-          // Inject Sub-Services
           authCoreService,
           iamService,
           rbacService,
           mfaService,
-          // Other Services
           schemaService,
           dataService,
           tenantService,
-          // State
           tenantId,
           currentUserRole,
           currentPermissions,

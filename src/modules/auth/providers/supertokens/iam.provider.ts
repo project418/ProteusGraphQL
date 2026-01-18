@@ -7,7 +7,7 @@ import { IIamProvider } from '../../interfaces/providers/iam.provider.interface'
 import { AuthUser, InviteInfo, UserProfile } from '../../interfaces/auth.entities';
 import { UserPaginationResult } from '../../interfaces/auth.dtos';
 import { UserMetadataStructure } from '../../interfaces/rbac.types';
-import { GraphQLError } from 'graphql/error'
+import { GraphQLError } from 'graphql/error';
 
 export class SuperTokensIamProvider implements IIamProvider {
   // --- User Management ---
@@ -37,7 +37,7 @@ export class SuperTokensIamProvider implements IIamProvider {
   async getUserByEmail(email: string): Promise<AuthUser | null> {
     const users = await SuperTokens.listUsersByAccountInfo('public', { email });
     if (users.length === 0) return null;
-    
+
     return this.getUser(users[0].id);
   }
 
@@ -222,5 +222,4 @@ export class SuperTokensIamProvider implements IIamProvider {
 
     return inviteData;
   }
-
 }

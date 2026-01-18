@@ -1,32 +1,18 @@
 const typeDefs = `#graphql
-  # ---------------------------------------------------------
-  # --- Policy / RBAC Types
-  # ---------------------------------------------------------
-  type RolePolicy {
-    description: String
-    mfa_required: Boolean
-    permissions: JSON
-  }
-
   type RoleDefinition {
     name: String!
-    policy: RolePolicy
+    permissions: [String]
   }
 
-  # ---------------------------------------------------------
-  # --- Extensions
-  # ---------------------------------------------------------
   extend type AuthQueries {
-    # -- Policy Management
-    listPolicies: [RoleDefinition]
-    getPolicy(roleName: String!): RolePolicy
+    listRoles: [RoleDefinition]
+    getRolePermissions(roleName: String!): [String]
   }
 
   extend type AuthMutations {
-    # -- Policy Management
-    createPolicy(roleName: String!, policy: JSON!): Boolean
-    updatePolicy(roleName: String!, policy: JSON!): Boolean
-    deletePolicy(roleName: String!): Boolean
+    createRole(roleName: String!, permissions: [String]!): Boolean
+    updateRole(roleName: String!, permissions: [String]!): Boolean
+    deleteRole(roleName: String!): Boolean
   }
 `;
 

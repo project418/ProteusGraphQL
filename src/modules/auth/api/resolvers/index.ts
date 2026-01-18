@@ -13,12 +13,6 @@ const resolvers = {
   },
 };
 
-const mergedResolvers = mergeResolvers([
-  resolvers,
-  coreResolvers,
-  iamResolvers,
-  rbacResolvers,
-  mfaResolvers
-]);
+const mergedResolvers = mergeResolvers([resolvers, coreResolvers, iamResolvers, rbacResolvers, mfaResolvers]);
 
 export default mergedResolvers;

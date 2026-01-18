@@ -1,5 +1,4 @@
 import { AuthUser } from './auth.entities';
-import { RolePolicy } from './rbac.types';
 
 export interface AuthTokens {
   accessToken: string;
@@ -18,7 +17,8 @@ export interface AuthServiceResponse {
   availableTenants: any[];
   accessToken: string;
   refreshToken: string;
-  permissions: RolePolicy['permissions'] | null;
+  role: string | null;
+  permissions: string[] | null;
   requiresPasswordChange: boolean;
   requiresMfa: boolean;
   mfaEnforced: boolean;

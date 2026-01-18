@@ -6,6 +6,7 @@ import UserMetadata from 'supertokens-node/recipe/usermetadata';
 import MultiFactorAuth from 'supertokens-node/recipe/multifactorauth';
 import Totp from 'supertokens-node/recipe/totp';
 import Multitenancy from 'supertokens-node/recipe/multitenancy';
+import UserRoles from 'supertokens-node/recipe/userroles';
 
 export const initSuperTokens = () => {
   SuperTokens.init({
@@ -25,6 +26,7 @@ export const initSuperTokens = () => {
       Session.init(),
       Dashboard.init(),
       UserMetadata.init(),
+      UserRoles.init(),
       MultiFactorAuth.init(),
       Totp.init(),
       Multitenancy.init(),

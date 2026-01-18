@@ -3,9 +3,9 @@ import { IAuthCoreProvider } from '../interfaces/providers/auth-core.provider.in
 import { AuthServiceResponse } from '../interfaces/auth.dtos';
 import { TenantService } from '../../tenant/services/tenant.service';
 import { IAuthContext } from '../interfaces/auth-context.interface';
-import { IIamProvider } from '../interfaces/providers/iam.provider.interface'
-import { IRbacProvider } from '../interfaces/providers/rbac.provider.interface'
-import { IMfaProvider } from '../interfaces/providers/mfa.provider.interface'
+import { IIamProvider } from '../interfaces/providers/iam.provider.interface';
+import { IRbacProvider } from '../interfaces/providers/rbac.provider.interface';
+import { IMfaProvider } from '../interfaces/providers/mfa.provider.interface';
 
 export class AuthCoreService {
   constructor(
@@ -30,7 +30,8 @@ export class AuthCoreService {
 
     let activeTenantDetails: any = null;
     let availableTenantsDetails: any[] = [];
-    let initialPermissions: any = null;
+    let initialRole: string | null = null;
+    let initialPermissions: string[] | null = null;
     let isMfaRequiredByPolicy = false;
 
     // 2. Load Tenant Context if available
@@ -41,15 +42,13 @@ export class AuthCoreService {
         const tempCtx = { ...context, tenantId: activeTenantId } as any;
         activeTenantDetails = await this.tenantService.getTenant(activeTenantId, tempCtx);
 
-        // Fetch User Role & Policy for this tenant via Provider
+        // Fetch User Role & Permissions for this tenant via Provider
         const role = await this.rbacProvider.getUserRoleInTenant(user.id, activeTenantId);
         if (role) {
-          const policy = await this.rbacProvider.getRolePolicy(activeTenantId, role);
-          if (policy) {
-            initialPermissions = policy.permissions;
-            if (policy.mfa_required) {
-              isMfaRequiredByPolicy = true;
-            }
+          const permissions = await this.rbacProvider.getRolePermissions(activeTenantId, role);
+          if (permissions) {
+            initialPermissions = permissions;
+            initialRole = role;
           }
         }
       } catch (e) {
@@ -89,6 +88,7 @@ export class AuthCoreService {
       availableTenants: availableTenantsDetails,
       accessToken: sessionResult.tokens.accessToken,
       refreshToken: sessionResult.tokens.refreshToken,
+      role: initialRole,
       permissions: initialPermissions,
       requiresPasswordChange: requiresPasswordChange,
       requiresMfa: isMfaRequiredByPolicy || hasMfaDevice,
@@ -100,12 +100,7 @@ export class AuthCoreService {
   /**
    * Registers a new user and creates a session.
    */
-  async register(
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-  ): Promise<AuthServiceResponse> {
+  async register(email: string, password: string, firstName: string, lastName: string): Promise<AuthServiceResponse> {
     const createdUser = await this.iamProvider.createUser(email, password);
 
     await this.iamProvider.updateUser(createdUser.id, {
@@ -132,6 +127,7 @@ export class AuthCoreService {
       availableTenants: [],
       accessToken: sessionResult.tokens.accessToken,
       refreshToken: sessionResult.tokens.refreshToken,
+      role: null,
       permissions: null,
       requiresPasswordChange: false,
       requiresMfa: false,
